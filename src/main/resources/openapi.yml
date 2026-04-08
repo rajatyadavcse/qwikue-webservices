@@ -1,0 +1,593 @@
+openapi: 3.0.3
+info:
+  title: Restaurant Service API
+  description: |
+    RESTful API for managing restaurants and their menu items.
+    
+    This service provides CRUD operations for:
+    - **Restaurants** — Create, retrieve, update, and delete restaurant profiles.
+    - **Menus** — Create, retrieve (by restaurant), update, and delete menu items.
+  version: 1.0.0
+  contact:
+    name: Restaurant Service Team
+    email: support@restaurant-service.com
+
+servers:
+  - url: http://localhost:8087
+    description: Local Development Server
+  - url: https://staging-api.restaurant-service.com
+    description: Staging Server
+  - url: https://api.restaurant-service.com
+    description: Production Server
+
+tags:
+  - name: Restaurant
+    description: Operations for managing restaurants
+  - name: Menu
+    description: Operations for managing menu items
+
+paths:
+  # =========================================================================
+  # Restaurant Endpoints
+  # =========================================================================
+  /restaurants:
+    post:
+      tags:
+        - Restaurant
+      summary: Create a new restaurant
+      description: Creates a new restaurant profile with the provided details.
+      operationId: createRestaurant
+      requestBody:
+        description: Restaurant object to be created
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestaurantRequest'
+            example:
+              restaurantName: "The Grand Kitchen"
+              addressName: "123 Main Street, New York, NY 10001"
+              phoneNo: "+1-555-123-4567"
+              status: "ACTIVE"
+              email: "info@grandkitchen.com"
+              type: "FINE_DINING"
+      responses:
+        '201':
+          description: Restaurant created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Restaurant'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Restaurant
+      summary: Get all restaurants
+      description: Retrieves a list of all registered restaurants.
+      operationId: getAllRestaurants
+      responses:
+        '200':
+          description: Successfully retrieved the list of restaurants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Restaurant'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /restaurants/{id}:
+    get:
+      tags:
+        - Restaurant
+      summary: Get restaurant by ID
+      description: Retrieves a single restaurant by its unique identifier.
+      operationId: getRestaurantById
+      parameters:
+        - name: id
+          in: path
+          description: Unique identifier of the restaurant
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      responses:
+        '200':
+          description: Successfully retrieved the restaurant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Restaurant'
+        '404':
+          description: Restaurant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: "2026-04-03T12:00:00"
+                status: 404
+                error: "Not Found"
+                message: "Restaurant not found with id: 1"
+                path: "/restaurants/1"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Restaurant
+      summary: Update an existing restaurant
+      description: Updates the restaurant identified by the given ID with the provided data.
+      operationId: updateRestaurant
+      parameters:
+        - name: id
+          in: path
+          description: Unique identifier of the restaurant to update
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      requestBody:
+        description: Updated restaurant data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestaurantRequest'
+            example:
+              restaurantName: "The Grand Kitchen (Updated)"
+              addressName: "456 Broadway, New York, NY 10002"
+              phoneNo: "+1-555-987-6543"
+              status: "ACTIVE"
+              email: "updated@grandkitchen.com"
+              type: "CASUAL_DINING"
+      responses:
+        '200':
+          description: Restaurant updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Restaurant'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Restaurant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Restaurant
+      summary: Delete a restaurant
+      description: Deletes the restaurant identified by the given ID.
+      operationId: deleteRestaurant
+      parameters:
+        - name: id
+          in: path
+          description: Unique identifier of the restaurant to delete
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      responses:
+        '204':
+          description: Restaurant deleted successfully (no content)
+        '404':
+          description: Restaurant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # =========================================================================
+  # Menu Endpoints
+  # =========================================================================
+  /menu:
+    post:
+      tags:
+        - Menu
+      summary: Create a new menu item
+      description: Creates a new menu item associated with a restaurant.
+      operationId: createMenu
+      requestBody:
+        description: Menu item to be created
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MenuRequest'
+            example:
+              restaurantId: 1
+              itemName: "Margherita Pizza"
+              description: "Classic pizza with fresh mozzarella, tomato sauce, and basil"
+              price: 14.99
+              category: "PIZZA"
+              isAvailable: true
+      responses:
+        '201':
+          description: Menu item created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Menu'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Menu
+      summary: Get menu items by restaurant ID
+      description: Retrieves all menu items belonging to a specific restaurant.
+      operationId: getMenuByRestaurantId
+      parameters:
+        - name: restaurantId
+          in: query
+          description: ID of the restaurant whose menu items to retrieve
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      responses:
+        '200':
+          description: Successfully retrieved menu items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Menu'
+        '404':
+          description: Restaurant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /menu/{id}:
+    put:
+      tags:
+        - Menu
+      summary: Update a menu item
+      description: Updates the menu item identified by the given ID.
+      operationId: updateMenu
+      parameters:
+        - name: id
+          in: path
+          description: Unique identifier of the menu item to update
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      requestBody:
+        description: Updated menu item data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MenuRequest'
+            example:
+              restaurantId: 1
+              itemName: "Margherita Pizza (Large)"
+              description: "Large classic pizza with fresh mozzarella, tomato sauce, and basil"
+              price: 18.99
+              category: "PIZZA"
+              isAvailable: true
+      responses:
+        '200':
+          description: Menu item updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Menu'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Menu item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Menu
+      summary: Delete a menu item
+      description: Deletes the menu item identified by the given ID.
+      operationId: deleteMenu
+      parameters:
+        - name: id
+          in: path
+          description: Unique identifier of the menu item to delete
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      responses:
+        '204':
+          description: Menu item deleted successfully (no content)
+        '404':
+          description: Menu item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+# ===========================================================================
+# Reusable Components
+# ===========================================================================
+components:
+  schemas:
+    # ---- Restaurant Schemas ----
+    Restaurant:
+      type: object
+      description: Full restaurant representation (includes server-managed fields)
+      properties:
+        restaurantId:
+          type: integer
+          format: int64
+          description: Unique auto-generated identifier
+          example: 1
+        restaurantName:
+          type: string
+          description: Name of the restaurant
+          example: "The Grand Kitchen"
+        addressName:
+          type: string
+          description: Physical address of the restaurant
+          example: "123 Main Street, New York, NY 10001"
+        phoneNo:
+          type: string
+          description: Contact phone number
+          example: "+1-555-123-4567"
+        createdDate:
+          type: string
+          format: date-time
+          description: Timestamp when the restaurant was created
+          example: "2026-04-03T12:00:00.000+00:00"
+        updatedDate:
+          type: string
+          format: date-time
+          description: Timestamp when the restaurant was last updated
+          example: "2026-04-03T12:30:00.000+00:00"
+        status:
+          type: string
+          description: Current operational status
+          example: "ACTIVE"
+          enum:
+            - ACTIVE
+            - INACTIVE
+            - TEMPORARILY_CLOSED
+        email:
+          type: string
+          format: email
+          description: Contact email address
+          example: "info@grandkitchen.com"
+        type:
+          type: string
+          description: Type/category of the restaurant
+          example: "FINE_DINING"
+          enum:
+            - FINE_DINING
+            - CASUAL_DINING
+            - FAST_FOOD
+            - CAFE
+            - BUFFET
+
+    RestaurantRequest:
+      type: object
+      description: Request body for creating or updating a restaurant
+      required:
+        - restaurantName
+        - addressName
+      properties:
+        restaurantName:
+          type: string
+          description: Name of the restaurant
+          example: "The Grand Kitchen"
+        addressName:
+          type: string
+          description: Physical address of the restaurant
+          example: "123 Main Street, New York, NY 10001"
+        phoneNo:
+          type: string
+          description: Contact phone number
+          example: "+1-555-123-4567"
+        status:
+          type: string
+          description: Current operational status
+          example: "ACTIVE"
+        email:
+          type: string
+          format: email
+          description: Contact email address
+          example: "info@grandkitchen.com"
+        type:
+          type: string
+          description: Type/category of the restaurant
+          example: "FINE_DINING"
+
+    # ---- Menu Schemas ----
+    Menu:
+      type: object
+      description: Full menu item representation (includes server-managed fields)
+      properties:
+        menuId:
+          type: integer
+          format: int64
+          description: Unique auto-generated identifier
+          example: 1
+        restaurantId:
+          type: integer
+          format: int64
+          description: ID of the restaurant this menu item belongs to
+          example: 1
+        itemName:
+          type: string
+          description: Name of the menu item
+          example: "Margherita Pizza"
+        description:
+          type: string
+          description: Detailed description of the item
+          example: "Classic pizza with fresh mozzarella, tomato sauce, and basil"
+        price:
+          type: number
+          format: double
+          description: Price of the item
+          example: 14.99
+        category:
+          type: string
+          description: Category the item belongs to
+          example: "PIZZA"
+        isAvailable:
+          type: boolean
+          description: Whether the item is currently available
+          example: true
+        createdDate:
+          type: string
+          format: date-time
+          description: Timestamp when the item was created
+          example: "2026-04-03T12:00:00.000+00:00"
+        updatedDate:
+          type: string
+          format: date-time
+          description: Timestamp when the item was last updated
+          example: "2026-04-03T12:30:00.000+00:00"
+
+    MenuRequest:
+      type: object
+      description: Request body for creating or updating a menu item
+      required:
+        - restaurantId
+        - itemName
+        - price
+      properties:
+        restaurantId:
+          type: integer
+          format: int64
+          description: ID of the restaurant this menu item belongs to
+          example: 1
+        itemName:
+          type: string
+          description: Name of the menu item
+          example: "Margherita Pizza"
+        description:
+          type: string
+          description: Detailed description of the item
+          example: "Classic pizza with fresh mozzarella, tomato sauce, and basil"
+        price:
+          type: number
+          format: double
+          description: Price of the item
+          example: 14.99
+        category:
+          type: string
+          description: Category the item belongs to
+          example: "PIZZA"
+        isAvailable:
+          type: boolean
+          description: Whether the item is currently available
+          example: true
+
+    # ---- Error Schema ----
+    ErrorResponse:
+      type: object
+      description: Standard error response returned by the API
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Time when the error occurred
+          example: "2026-04-03T12:00:00"
+        status:
+          type: integer
+          description: HTTP status code
+          example: 404
+        error:
+          type: string
+          description: HTTP status reason phrase
+          example: "Not Found"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Restaurant not found with id: 99"
+        path:
+          type: string
+          description: The request path that caused the error
+          example: "/restaurants/99"
