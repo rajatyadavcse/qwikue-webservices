@@ -3,8 +3,8 @@ spring:
     name: restaurant-service
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://db.iglezaprcevbzjldkutb.supabase.co:5432/postgres?sslmode=require
-    username: postgres
+    url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres?sslmode=require
+    username: postgres.iglezaprcevbzjldkutb
     password: MLshZRv51jdYvLhF
   jpa:
     hibernate:
