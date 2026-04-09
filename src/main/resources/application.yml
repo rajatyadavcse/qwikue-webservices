@@ -13,6 +13,28 @@ spring:
 
 server:
   port: ${PORT:8080}
+  forward-headers-strategy: framework
+
+app:
+  base-url: ${APP_BASE_URL:}
 
 cors:
   allowed-origins: "*"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: Restaurant Service
+    description: RESTful API for managing restaurants and their menu items
+    version: 1.0.0

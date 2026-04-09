@@ -9,17 +9,35 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
 @OpenAPIDefinition
 public class OpenApiConfig {
 
-    @Value("${server.port:8087}")
+    @Value("${server.port:8080}")
     private String serverPort;
+
+    @Value("${app.base-url:}")
+    private String baseUrl;
 
     @Bean
     public OpenAPI customOpenAPI() {
+        List<Server> servers = new ArrayList<>();
+
+        // Add production server if base URL is configured
+        if (baseUrl != null && !baseUrl.isBlank()) {
+            servers.add(new Server()
+                    .url(baseUrl)
+                    .description("Production Environment"));
+        }
+
+        // Always add localhost for local development
+        servers.add(new Server()
+                .url("http://localhost:" + serverPort)
+                .description("Local Development"));
+
         return new OpenAPI()
                 .info(new Info()
                         .title("Restaurant Service API")
@@ -28,9 +46,6 @@ public class OpenApiConfig {
                         .contact(new Contact()
                                 .name("Restaurant Service Team")
                                 .email("support@restaurant-service.com")))
-                .servers(List.of(
-                        new Server()
-                                .url("http://localhost:" + serverPort)
-                                .description("Current Environment")));
+                .servers(servers);
     }
 }
