@@ -17,6 +17,9 @@ public class OpenApiConfig {
     @Value("${app.base-url:}")
     private String baseUrl;
 
+    @Value("${RAILWAY_PUBLIC_DOMAIN:}")
+    private String railwayDomain;
+
     @Value("${server.port:8080}")
     private String serverPort;
 
@@ -24,14 +27,20 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         List<Server> servers = new ArrayList<>();
 
-        // If APP_BASE_URL is set (on Railway), add it as primary server
+        // Priority 1: Explicit base URL from APP_BASE_URL env var
         if (baseUrl != null && !baseUrl.isBlank()) {
             servers.add(new Server()
                     .url(baseUrl)
                     .description("Production"));
         }
+        // Priority 2: Auto-detect from Railway's built-in RAILWAY_PUBLIC_DOMAIN env var
+        else if (railwayDomain != null && !railwayDomain.isBlank()) {
+            servers.add(new Server()
+                    .url("https://" + railwayDomain)
+                    .description("Production"));
+        }
 
-        // Always add localhost as fallback for local dev
+        // Always add localhost for local development
         servers.add(new Server()
                 .url("http://localhost:" + serverPort)
                 .description("Local Development"));
