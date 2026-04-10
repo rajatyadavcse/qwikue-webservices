@@ -1,6 +1,5 @@
 package com.restaurant.service.config;
 
-import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
@@ -13,27 +12,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
-@OpenAPIDefinition
 public class OpenApiConfig {
-
-    @Value("${server.port:8080}")
-    private String serverPort;
 
     @Value("${app.base-url:}")
     private String baseUrl;
+
+    @Value("${server.port:8080}")
+    private String serverPort;
 
     @Bean
     public OpenAPI customOpenAPI() {
         List<Server> servers = new ArrayList<>();
 
-        // Add production server if base URL is configured
+        // If APP_BASE_URL is set (on Railway), add it as primary server
         if (baseUrl != null && !baseUrl.isBlank()) {
             servers.add(new Server()
                     .url(baseUrl)
-                    .description("Production Environment"));
+                    .description("Production"));
         }
 
-        // Always add localhost for local development
+        // Always add localhost as fallback for local dev
         servers.add(new Server()
                 .url("http://localhost:" + serverPort)
                 .description("Local Development"));
