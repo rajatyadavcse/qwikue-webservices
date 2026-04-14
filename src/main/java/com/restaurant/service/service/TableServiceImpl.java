@@ -11,6 +11,7 @@ import com.restaurant.service.exception.ResourceAlreadyExistsException;
 import com.restaurant.service.exception.ResourceNotFoundException;
 import com.restaurant.service.mapper.TableMapper;
 import com.restaurant.service.model.Table;
+import com.restaurant.service.repository.RestaurantRepository;
 import com.restaurant.service.repository.TableRepository;
 
 @Service
@@ -20,6 +21,9 @@ public class TableServiceImpl implements ITableService {
     TableRepository tableRepository;
 
     @Autowired
+    RestaurantRepository restaurantRepository;
+
+    @Autowired
     TableMapper tableMapper;
 
     @Override
@@ -27,6 +31,11 @@ public class TableServiceImpl implements ITableService {
         if (table.getTableNo() == null || table.getRestaurantId() == null) {
             throw new ResourceNotFoundException("Table No and Restaurantid is required for creating a table");
         }
+
+        if (!restaurantRepository.existsById(table.getRestaurantId())) {
+            throw new ResourceNotFoundException("Restaurant with id " + table.getRestaurantId() + " not found");
+        }
+
         TableId tableId = new TableId();
         tableId.setTableNo(table.getTableNo());
         tableId.setRestaurantId(table.getRestaurantId());

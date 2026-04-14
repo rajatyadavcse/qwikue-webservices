@@ -26,6 +26,8 @@ public class MenuDAO {
 
     private Boolean isAvailable;
 
+    private String imageUrl;
+
     private Date createdDate;
 
     private Date updatedDate;

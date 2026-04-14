@@ -30,6 +30,8 @@ public class Menu implements Serializable {
 
     private Boolean isAvailable;
 
+    private String imageUrl;
+
     private Date createdDate;
 
     private Date updatedDate;
