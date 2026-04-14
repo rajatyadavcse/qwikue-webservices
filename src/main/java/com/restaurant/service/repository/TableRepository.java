@@ -9,8 +9,8 @@ import com.restaurant.service.dao.TableId;
 
 public interface TableRepository extends JpaRepository<TableDAO, TableId> {
 
-    boolean existsByRestaurantId(Long restaurantId);
+    boolean existsByTableIdRestaurantId(Long restaurantId);
 
-    List<TableDAO> findAllByRestaurantId(Long restaurantId);
+    List<TableDAO> findAllByTableIdRestaurantId(Long restaurantId);
 
 }

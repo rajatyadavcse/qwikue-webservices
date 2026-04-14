@@ -66,10 +66,10 @@ public class TableServiceImpl implements ITableService {
 
     @Override
     public List<Table> getTablesByRestaurantId(Long restaurantId) {
-        if (restaurantId == null || !tableRepository.existsByRestaurantId(restaurantId)) {
+        if (restaurantId == null || !tableRepository.existsByTableIdRestaurantId(restaurantId)) {
             throw new ResourceNotFoundException("Record with restaurantId " + restaurantId + " not found");
         }
-        return tableMapper.tableDAOListToTableList(tableRepository.findAllByRestaurantId(restaurantId));
+        return tableMapper.tableDAOListToTableList(tableRepository.findAllByTableIdRestaurantId(restaurantId));
     }
 
     @Override
