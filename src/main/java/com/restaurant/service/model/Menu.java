@@ -28,6 +28,8 @@ public class Menu implements Serializable {
 
     private String category;
 
+    private Boolean isVeg;
+
     private Boolean isAvailable;
 
     private String imageUrl;
