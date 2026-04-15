@@ -6,10 +6,23 @@ spring:
     url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres?sslmode=require
     username: postgres.iglezaprcevbzjldkutb
     password: MLshZRv51jdYvLhF
+    hikari:
+      maximum-pool-size: 5       # cap DB connections (each costs ~5-10 MB)
+      minimum-idle: 2            # keep 2 warm connections idle
+      connection-timeout: 30000  # 30s wait before failing
+      idle-timeout: 600000       # release idle connections after 10 min
+      max-lifetime: 1800000      # recycle connections after 30 min
   jpa:
+    open-in-view: false          # release Hibernate session after transaction, not after HTTP response
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate         # safer than update; no schema-diff kept in memory at startup
     database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 20         # batch inserts/updates to reduce object graph overhead
+        order_inserts: true
+        order_updates: true
 
 server:
   port: ${PORT:8080}
@@ -28,7 +41,7 @@ management:
         include: health,info,metrics
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized  # don't expose full details to unauthenticated requests
   info:
     env:
       enabled: true
