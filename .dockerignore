@@ -1,0 +1,21 @@
+# Git
+.git
+.gitignore
+
+# IDE / editor files
+.idea
+*.iml
+.vscode
+*.code-workspace
+.DS_Store
+
+# Maven output (builder stage re-creates this)
+target/
+
+# Local dev overrides
+*.env
+.env*
+
+# Docs / misc
+README.md
+*.md

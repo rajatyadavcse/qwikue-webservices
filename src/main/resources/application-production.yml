@@ -1,0 +1,20 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres?sslmode=require
+    username: postgres.iglezaprcevbzjldkutb
+    password: MLshZRv51jdYvLhF
+    hikari:
+      maximum-pool-size: 5       # cap DB connections — Supabase free tier allows ~10
+      minimum-idle: 2            # keep 2 warm connections idle
+      connection-timeout: 30000  # 30s wait before failing
+      idle-timeout: 600000       # release idle connections after 10 min
+      max-lifetime: 1800000      # recycle connections after 30 min
+
+# Open CORS to all origins on production (lock this down to your frontend domain if needed)
+cors:
+  allowed-origins: "*"
+
+springdoc:
+  swagger-ui:
+    enabled: true

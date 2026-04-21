@@ -1,17 +1,9 @@
 spring:
   application:
     name: restaurant-service
-  datasource:
-    driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres?sslmode=require
-    username: postgres.iglezaprcevbzjldkutb
-    password: MLshZRv51jdYvLhF
-    hikari:
-      maximum-pool-size: 5       # cap DB connections (each costs ~5-10 MB)
-      minimum-idle: 2            # keep 2 warm connections idle
-      connection-timeout: 30000  # 30s wait before failing
-      idle-timeout: 600000       # release idle connections after 10 min
-      max-lifetime: 1800000      # recycle connections after 30 min
+  # Default to 'production' profile — no need to set anything on the deployment platform
+  profiles:
+    active: production
   jpa:
     open-in-view: false          # release Hibernate session after transaction, not after HTTP response
     hibernate:
@@ -25,14 +17,8 @@ spring:
         order_updates: true
 
 server:
-  port: ${PORT:8080}
-  forward-headers-strategy: native
-
-app:
-  base-url: ${APP_BASE_URL:}
-
-cors:
-  allowed-origins: "*"
+  port: 8080
+  forward-headers-strategy: native  # trust X-Forwarded-* headers from Railway/Render/Heroku reverse proxies
 
 management:
   endpoints:
