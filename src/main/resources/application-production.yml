@@ -18,3 +18,18 @@ cors:
 springdoc:
   swagger-ui:
     enabled: true
+
+# ── Keep-Alive Scheduler (Render free-tier anti-sleep) ───────────────────────
+# Render's free tier spins down a service after 15 minutes of inactivity.
+# This cron job fires a lightweight DB query every 10 minutes so the JVM
+# process is never idle long enough for Render to put it to sleep.
+#
+# Cron format (Spring): second minute hour day-of-month month day-of-week
+#   "0 0/10 * * * *"  →  fires at 0s of every 10th minute, every hour, every day
+#
+# ⚠️  To change the interval, update the expression below.
+#     Keep it strictly BELOW 15 minutes (Render's sleep threshold).
+#     Recommended range: every 10–12 minutes.
+app:
+  keep-alive:
+    cron: "0 0/10 * * * *"
