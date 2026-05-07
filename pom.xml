@@ -11,7 +11,7 @@
 	<groupId>com.restaurant.service</groupId>
 	<artifactId>restaurant-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>account-service</name>
+	<name>restaurant-service</name>
 	<description>Provides restaurant service app</description>
 	<url/>
 	<licenses>
