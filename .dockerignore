@@ -1,0 +1,19 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE / OS artefacts
+.idea
+*.iml
+.DS_Store
+
+# Maven build output (rebuilt inside Docker)
+target/
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+
+# Local Spring profile (never ship local secrets into the image)
+src/main/resources/application-local.yml
