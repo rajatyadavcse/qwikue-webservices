@@ -40,4 +40,9 @@ public class MenuController {
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
+    @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Menu> getMenuById(@PathVariable Long id) {
+        return new ResponseEntity<>(menuService.getMenuById(id), HttpStatus.OK);
+    }
+
 }

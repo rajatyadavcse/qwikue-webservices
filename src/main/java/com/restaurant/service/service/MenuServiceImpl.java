@@ -40,6 +40,13 @@ public class MenuServiceImpl implements IMenuService {
     }
 
     @Override
+    public Menu getMenuById(Long id) {
+        MenuDAO menuDAO = menuRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Menu not found with id: " + id));
+        return mapper.menuDAOToMenu(menuDAO);
+    }
+
+    @Override
     public Menu updateMenu(Long id, Menu menuDetails) {
         MenuDAO existingMenuDAO = menuRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Menu not found with id: " + id));

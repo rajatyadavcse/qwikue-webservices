@@ -303,6 +303,47 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   /menu/{id}:
+    get:
+      tags:
+        - Menu
+      summary: Get menu item by ID
+      description: Retrieves a single menu item by its unique identifier.
+      operationId: getMenuById
+      parameters:
+        - name: id
+          in: path
+          description: Unique identifier of the menu item
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      responses:
+        '200':
+          description: Successfully retrieved the menu item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Menu'
+        '404':
+          description: Menu item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: "2026-04-03T12:00:00"
+                status: 404
+                error: "Not Found"
+                message: "Menu not found with id: 1"
+                path: "/menu/1"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
     put:
       tags:
         - Menu
