@@ -38,4 +38,7 @@ public class OrderItemDAO {
     /** Computed: quantity × unitPrice */
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal totalItemPrice;
+
+    @Column(name = "item_name")
+    private String itemName;
 }

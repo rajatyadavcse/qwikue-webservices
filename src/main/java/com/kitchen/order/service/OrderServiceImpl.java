@@ -82,6 +82,7 @@ public class OrderServiceImpl implements IOrderService {
             item.setMenuId(itemRequest.getMenuId());
             item.setQuantity(itemRequest.getQuantity());
             item.setUnitPrice(menu.getPrice());
+            item.setItemName(menu.getItemName());
 
             // Compute total_item_price = quantity × unit_price
             BigDecimal itemTotal = menu.getPrice().multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
