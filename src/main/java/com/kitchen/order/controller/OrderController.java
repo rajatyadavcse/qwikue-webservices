@@ -96,15 +96,13 @@ public class OrderController {
 
     @Operation(
             summary = "Update order status",
-            description = "Transitions the order to a new status following the allowed state machine. " +
-                          "Valid transitions: PENDING→PREPARING/CANCELLED, PREPARING→READY/CANCELLED, READY→COMPLETED. " +
-                          "Reason is mandatory when cancelling."
+            description = "Transitions the order to a new status. The transition is allowed from any status to any different status. " +
+                          "Reason is optional for all cases."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Status updated successfully"),
-            @ApiResponse(responseCode = "400", description = "Missing cancellation reason"),
-            @ApiResponse(responseCode = "404", description = "Order not found"),
-            @ApiResponse(responseCode = "422", description = "Invalid status transition")
+            @ApiResponse(responseCode = "400", description = "Null status or identical status transition"),
+            @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @PutMapping(value = "/{id}/status",
             produces = MediaType.APPLICATION_JSON_VALUE,

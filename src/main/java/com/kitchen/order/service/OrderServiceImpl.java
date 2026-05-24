@@ -33,8 +33,8 @@ public class OrderServiceImpl implements IOrderService {
     private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
 
     /** Active statuses shown on the kitchen dashboard. */
-    private static final List<OrderStatus> KITCHEN_ACTIVE_STATUSES =
-            List.of(OrderStatus.PENDING, OrderStatus.PREPARING, OrderStatus.READY);
+    private static final List<OrderStatus> KITCHEN_ACTIVE_STATUSES = List.of(OrderStatus.PENDING, OrderStatus.PREPARING,
+            OrderStatus.READY);
 
     @Autowired
     private OrderRepository orderRepository;
@@ -75,8 +75,8 @@ public class OrderServiceImpl implements IOrderService {
 
         for (OrderItemRequest itemRequest : request.getItems()) {
             // Validate menu item and get current price from restaurant-service
-            RestaurantValidationService.MenuResponse menu =
-                    validationService.validateMenuAndGetPrice(itemRequest.getMenuId());
+            RestaurantValidationService.MenuResponse menu = validationService
+                    .validateMenuAndGetPrice(itemRequest.getMenuId());
 
             OrderItemDAO item = new OrderItemDAO();
             item.setMenuId(itemRequest.getMenuId());
@@ -114,7 +114,8 @@ public class OrderServiceImpl implements IOrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public PagedResponse<OrderResponse> getOrdersByRestaurant(Long restaurantId, OrderStatus status, Pageable pageable) {
+    public PagedResponse<OrderResponse> getOrdersByRestaurant(Long restaurantId, OrderStatus status,
+            Pageable pageable) {
         Page<OrderDAO> page;
 
         if (status != null) {
@@ -131,8 +132,7 @@ public class OrderServiceImpl implements IOrderService {
                 page.getSize(),
                 page.getTotalElements(),
                 page.getTotalPages(),
-                page.isLast()
-        );
+                page.isLast());
     }
 
     @Override
@@ -147,8 +147,8 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     @Transactional(readOnly = true)
     public List<OrderResponse> getKitchenOrders(Long restaurantId) {
-        List<OrderDAO> activeOrders =
-                orderRepository.findByRestaurantIdAndStatusIn(restaurantId, KITCHEN_ACTIVE_STATUSES);
+        List<OrderDAO> activeOrders = orderRepository.findByRestaurantIdAndStatusIn(restaurantId,
+                KITCHEN_ACTIVE_STATUSES);
         return orderMapper.orderDAOListToResponseList(activeOrders);
     }
 
@@ -162,21 +162,16 @@ public class OrderServiceImpl implements IOrderService {
 
         log.info("Updating order {} status: {} → {}", orderId, currentStatus, newStatus);
 
-        // Validate state machine transition
-        if (!currentStatus.canTransitionTo(newStatus)) {
-            throw new InvalidStatusTransitionException(currentStatus, newStatus);
+        if (newStatus == null) {
+            throw new IllegalArgumentException("Order status cannot be null or empty");
         }
 
-        // Reason is mandatory when cancelling
-        if (newStatus == OrderStatus.CANCELLED) {
-            String reason = request.getReason();
-            if (reason == null || reason.isBlank()) {
-                throw new IllegalArgumentException("A reason is required when cancelling an order");
-            }
-            order.setReason(reason);
+        if (currentStatus == newStatus) {
+            throw new IllegalArgumentException("Current status and new status are the same");
         }
 
         order.setStatus(newStatus);
+        order.setReason(request.getReason());
         OrderDAO saved = orderRepository.save(order);
 
         log.info("Order {} status updated to {}", orderId, newStatus);

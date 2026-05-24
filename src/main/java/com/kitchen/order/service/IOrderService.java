@@ -29,8 +29,8 @@ public interface IOrderService {
     PagedResponse<OrderResponse> getOrdersByRestaurant(Long restaurantId, OrderStatus status, Pageable pageable);
 
     /**
-     * Updates the status of an order following the allowed state machine transitions.
-     * Reason is mandatory when transitioning to CANCELLED.
+     * Updates the status of an order to any new status.
+     * Reason is optional for all status updates.
      */
     OrderResponse updateOrderStatus(Long orderId, UpdateOrderStatusRequest request);
 

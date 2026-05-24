@@ -11,9 +11,7 @@ public class UpdateOrderStatusRequest {
     private OrderStatus status;
 
     /**
-     * Required when transitioning to CANCELLED.
-     * The service layer enforces this rule — not enforced here via annotation
-     * because it is conditionally mandatory.
+     * Optional reason for the status transition.
      */
     private String reason;
 }
