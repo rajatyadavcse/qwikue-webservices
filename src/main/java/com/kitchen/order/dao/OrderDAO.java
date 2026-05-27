@@ -43,7 +43,24 @@ public class OrderDAO {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
-    /** Populated only when status = CANCELLED */
+    @Column(name = "prep_minutes")
+    private Integer prepMinutes;
+
+    @Column(name = "accepted_at")
+    private LocalDateTime acceptedAt;
+
+    @Column(name = "initial_ready_at")
+    private LocalDateTime initialReadyAt;
+
+    @Column(name = "ready_at")
+    private LocalDateTime readyAt;
+
+    @Column(name = "actual_ready_at")
+    private LocalDateTime actualReadyAt;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
     @Column(columnDefinition = "TEXT")
     private String reason;
 

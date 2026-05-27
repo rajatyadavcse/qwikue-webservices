@@ -20,14 +20,16 @@ public enum OrderStatus {
     PREPARING,
     READY,
     COMPLETED,
-    CANCELLED;
+    CANCELLED,
+    REJECTED;
 
     private static final Map<OrderStatus, Set<OrderStatus>> VALID_TRANSITIONS = Map.of(
             PENDING,   EnumSet.of(PREPARING, CANCELLED),
             PREPARING, EnumSet.of(READY, CANCELLED),
             READY,     EnumSet.of(COMPLETED),
             COMPLETED, EnumSet.noneOf(OrderStatus.class),
-            CANCELLED, EnumSet.noneOf(OrderStatus.class)
+            CANCELLED, EnumSet.noneOf(OrderStatus.class),
+            REJECTED,  EnumSet.noneOf(OrderStatus.class)
     );
 
     /**

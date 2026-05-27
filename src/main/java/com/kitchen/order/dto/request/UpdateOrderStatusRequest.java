@@ -14,4 +14,9 @@ public class UpdateOrderStatusRequest {
      * Optional reason for the status transition.
      */
     private String reason;
+
+    /**
+     * Optional preparation time (minutes) or extra delay time.
+     */
+    private Integer prepMinutes;
 }

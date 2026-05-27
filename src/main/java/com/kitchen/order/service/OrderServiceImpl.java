@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -168,11 +169,48 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         if (currentStatus == newStatus) {
-            throw new IllegalArgumentException("Current status and new status are the same");
+            if (newStatus == OrderStatus.PREPARING && request.getPrepMinutes() != null) {
+                // This is a delay request
+                log.info("Delaying order {} by {} minutes. Reason: {}", orderId, request.getPrepMinutes(), request.getReason());
+                
+                int delayMin = request.getPrepMinutes();
+                order.setPrepMinutes((order.getPrepMinutes() != null ? order.getPrepMinutes() : 0) + delayMin);
+                
+                LocalDateTime baseTime = order.getReadyAt() != null ? order.getReadyAt() : LocalDateTime.now();
+                order.setReadyAt(baseTime.plusMinutes(delayMin));
+                
+                if (request.getReason() != null) {
+                    order.setReason(request.getReason());
+                }
+                
+                OrderDAO saved = orderRepository.save(order);
+                log.info("Order {} delayed successfully. New readyAt: {}", orderId, order.getReadyAt());
+                return orderMapper.orderDAOToOrderResponse(saved);
+            } else {
+                throw new IllegalArgumentException("Current status and new status are the same");
+            }
+        }
+
+        // Apply state transition rules
+        if (newStatus == OrderStatus.PREPARING) {
+            order.setAcceptedAt(LocalDateTime.now());
+            if (request.getPrepMinutes() != null) {
+                int prep = request.getPrepMinutes();
+                order.setPrepMinutes(prep);
+                order.setInitialReadyAt(order.getAcceptedAt().plusMinutes(prep));
+                order.setReadyAt(order.getAcceptedAt().plusMinutes(prep));
+            }
+        } else if (newStatus == OrderStatus.READY) {
+            order.setActualReadyAt(LocalDateTime.now());
+        } else if (newStatus == OrderStatus.COMPLETED) {
+            order.setCompletedAt(LocalDateTime.now());
         }
 
         order.setStatus(newStatus);
-        order.setReason(request.getReason());
+        if (request.getReason() != null) {
+            order.setReason(request.getReason());
+        }
+        
         OrderDAO saved = orderRepository.save(order);
 
         log.info("Order {} status updated to {}", orderId, newStatus);

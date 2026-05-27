@@ -18,6 +18,12 @@ public class OrderResponse {
     private BigDecimal totalAmount;
     private String notes;
     private String reason;
+    private Integer prepMinutes;
+    private LocalDateTime acceptedAt;
+    private LocalDateTime initialReadyAt;
+    private LocalDateTime readyAt;
+    private LocalDateTime actualReadyAt;
+    private LocalDateTime completedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<OrderItemResponse> items;
