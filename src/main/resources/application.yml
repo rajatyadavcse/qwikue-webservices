@@ -1,6 +1,8 @@
 spring:
   application:
     name: restaurant-service
+  jackson:
+    time-zone: Asia/Kolkata
   # Default to 'production' profile — no need to set anything on the deployment platform
   profiles:
     active: production
