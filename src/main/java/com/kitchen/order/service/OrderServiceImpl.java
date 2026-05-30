@@ -15,9 +15,11 @@ import com.kitchen.order.mapper.OrderItemMapper;
 import com.kitchen.order.mapper.OrderMapper;
 import com.kitchen.order.repository.OrderItemRepository;
 import com.kitchen.order.repository.OrderRepository;
+import com.kitchen.order.dto.event.OrderUpdateEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -51,6 +53,9 @@ public class OrderServiceImpl implements IOrderService {
 
     @Autowired
     private OrderItemMapper orderItemMapper;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     // ── Create ─────────────────────────────────────────────────────────────────
 
@@ -102,7 +107,9 @@ public class OrderServiceImpl implements IOrderService {
         OrderDAO saved = orderRepository.save(order);
         log.info("Order created successfully with orderId={}", saved.getOrderId());
 
-        return orderMapper.orderDAOToOrderResponse(saved);
+        OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
+        eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
+        return response;
     }
 
     // ── Read ───────────────────────────────────────────────────────────────────
@@ -185,7 +192,9 @@ public class OrderServiceImpl implements IOrderService {
                 
                 OrderDAO saved = orderRepository.save(order);
                 log.info("Order {} delayed successfully. New readyAt: {}", orderId, order.getReadyAt());
-                return orderMapper.orderDAOToOrderResponse(saved);
+                OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
+                eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
+                return response;
             } else {
                 throw new IllegalArgumentException("Current status and new status are the same");
             }
@@ -214,7 +223,9 @@ public class OrderServiceImpl implements IOrderService {
         OrderDAO saved = orderRepository.save(order);
 
         log.info("Order {} status updated to {}", orderId, newStatus);
-        return orderMapper.orderDAOToOrderResponse(saved);
+        OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
+        eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
+        return response;
     }
 
     // ── Cancel (soft delete) ───────────────────────────────────────────────────
@@ -237,7 +248,9 @@ public class OrderServiceImpl implements IOrderService {
         OrderDAO saved = orderRepository.save(order);
 
         log.info("Order {} cancelled. Reason: {}", orderId, reason);
-        return orderMapper.orderDAOToOrderResponse(saved);
+        OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
+        eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
+        return response;
     }
 
     // ── Private helpers ────────────────────────────────────────────────────────

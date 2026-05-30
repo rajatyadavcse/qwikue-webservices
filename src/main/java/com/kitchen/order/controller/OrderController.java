@@ -21,6 +21,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import com.kitchen.order.service.OrderStreamService;
 
 import java.util.List;
 import java.util.Map;
@@ -32,6 +34,9 @@ public class OrderController {
 
     @Autowired
     private IOrderService orderService;
+
+    @Autowired
+    private OrderStreamService streamService;
 
     // ── POST /orders ───────────────────────────────────────────────────────────
 
@@ -158,5 +163,23 @@ public class OrderController {
                 .map(Enum::name)
                 .toArray(String[]::new);
         return ResponseEntity.ok(Map.of("statuses", statuses));
+    }
+
+    // ── GET /orders/{id}/stream (customer SSE tracking stream) ─────────────────
+
+    @Operation(summary = "Stream order status updates for customer", description = "Standard HTTP-based SSE stream.")
+    @GetMapping(value = "/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamOrderUpdates(
+            @Parameter(description = "Order ID") @PathVariable Long id) {
+        return streamService.subscribeToOrder(id);
+    }
+
+    // ── GET /orders/restaurant/{restaurantId}/stream (staff dashboard stream) ──
+
+    @Operation(summary = "Stream all restaurant order updates for dashboards", description = "Standard HTTP-based SSE stream.")
+    @GetMapping(value = "/restaurant/{restaurantId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamRestaurantUpdates(
+            @Parameter(description = "Restaurant ID") @PathVariable Long restaurantId) {
+        return streamService.subscribeToRestaurant(restaurantId);
     }
 }
