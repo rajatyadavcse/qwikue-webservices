@@ -59,6 +59,7 @@ public class RestaurantServiceImpl implements IRestaurantService {
         existingRestaurantDAO.setStatus(restaurantDetails.getStatus());
         existingRestaurantDAO.setEmail(restaurantDetails.getEmail());
         existingRestaurantDAO.setType(restaurantDetails.getType());
+        existingRestaurantDAO.setTaxesAndCharges(restaurantDetails.getTaxesAndCharges());
         existingRestaurantDAO.setUpdatedDate(new Date());
 
         return mapper.restaurantDAOToRestaurant(restaurantRepository.save(existingRestaurantDAO));

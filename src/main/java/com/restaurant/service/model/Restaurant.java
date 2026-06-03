@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -35,4 +36,7 @@ public class Restaurant implements Serializable {
     private String email;
 
     private String type;
+
+    private List<RestaurantCharge> taxesAndCharges;
 }
+
