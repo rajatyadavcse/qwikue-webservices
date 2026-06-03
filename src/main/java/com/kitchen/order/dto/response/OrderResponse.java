@@ -15,7 +15,11 @@ public class OrderResponse {
     private Long restaurantId;
     private Long tableNo;
     private OrderStatus status;
+    private BigDecimal subTotal;
+    private BigDecimal taxAmount;
+    private BigDecimal serviceChargeAmount;
     private BigDecimal totalAmount;
+    private List<OrderAppliedCharge> taxesAndCharges;
     private String notes;
     private String reason;
     private Integer prepMinutes;

@@ -1,8 +1,11 @@
 package com.kitchen.order.dao;
 
 import com.kitchen.order.enums.OrderStatus;
+import com.kitchen.order.dto.response.OrderAppliedCharge;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -36,8 +39,21 @@ public class OrderDAO {
     @Column(nullable = false, length = 20)
     private OrderStatus status;
 
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(name = "sub_total", nullable = false, precision = 10, scale = 2)
+    private BigDecimal subTotal = BigDecimal.ZERO;
+
+    @Column(name = "tax_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal taxAmount = BigDecimal.ZERO;
+
+    @Column(name = "service_charge_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal serviceChargeAmount = BigDecimal.ZERO;
+
+    @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "taxes_and_charges", columnDefinition = "jsonb")
+    private List<OrderAppliedCharge> taxesAndCharges = new ArrayList<>();
 
     /** Optional customer notes (e.g. "no onions") */
     @Column(columnDefinition = "TEXT")

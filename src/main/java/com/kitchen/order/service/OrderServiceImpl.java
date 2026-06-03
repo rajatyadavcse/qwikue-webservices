@@ -8,6 +8,8 @@ import com.kitchen.order.dto.request.UpdateOrderStatusRequest;
 import com.kitchen.order.dto.response.OrderItemResponse;
 import com.kitchen.order.dto.response.OrderResponse;
 import com.kitchen.order.dto.response.PagedResponse;
+import com.kitchen.order.dto.response.OrderAppliedCharge;
+import com.kitchen.order.dto.response.RestaurantChargeDto;
 import com.kitchen.order.enums.OrderStatus;
 import com.kitchen.order.exception.InvalidStatusTransitionException;
 import com.kitchen.order.exception.ResourceNotFoundException;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -63,8 +66,8 @@ public class OrderServiceImpl implements IOrderService {
     public OrderResponse createOrder(CreateOrderRequest request) {
         log.info("Creating order for restaurantId={}, tableNo={}", request.getRestaurantId(), request.getTableNo());
 
-        // 1. Validate restaurant exists
-        validationService.validateRestaurant(request.getRestaurantId());
+        // 1. Validate restaurant exists and get configurations
+        RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(request.getRestaurantId());
 
         // 2. Validate table belongs to restaurant
         validationService.validateTable(request.getTableNo(), request.getRestaurantId());
@@ -77,7 +80,7 @@ public class OrderServiceImpl implements IOrderService {
         order.setStatus(OrderStatus.PENDING);
 
         // 4. Build order items — validate each menu item and snapshot price
-        BigDecimal totalAmount = BigDecimal.ZERO;
+        BigDecimal subTotal = BigDecimal.ZERO;
 
         for (OrderItemRequest itemRequest : request.getItems()) {
             // Validate menu item and get current price from restaurant-service
@@ -98,10 +101,44 @@ public class OrderServiceImpl implements IOrderService {
             item.setOrder(order);
             order.getItems().add(item);
 
-            totalAmount = totalAmount.add(itemTotal);
+            subTotal = subTotal.add(itemTotal);
         }
 
-        order.setTotalAmount(totalAmount);
+        order.setSubTotal(subTotal);
+
+        // Calculate dynamic taxes and service charges
+        BigDecimal taxAmount = BigDecimal.ZERO;
+        BigDecimal serviceChargeAmount = BigDecimal.ZERO;
+        List<OrderAppliedCharge> appliedCharges = new ArrayList<>();
+
+        if (restaurant.getTaxesAndCharges() != null) {
+            for (RestaurantChargeDto charge : restaurant.getTaxesAndCharges()) {
+                BigDecimal amount = BigDecimal.ZERO;
+                if ("PERCENTAGE".equalsIgnoreCase(charge.getType())) {
+                    amount = subTotal.multiply(charge.getValue()).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+                } else if ("FIXED".equalsIgnoreCase(charge.getType())) {
+                    amount = charge.getValue();
+                }
+
+                if ("TAX".equalsIgnoreCase(charge.getCategory())) {
+                    taxAmount = taxAmount.add(amount);
+                } else if ("SERVICE_CHARGE".equalsIgnoreCase(charge.getCategory())) {
+                    serviceChargeAmount = serviceChargeAmount.add(amount);
+                }
+
+                OrderAppliedCharge applied = new OrderAppliedCharge();
+                applied.setName(charge.getName());
+                applied.setType(charge.getType());
+                applied.setAppliedRate(charge.getValue());
+                applied.setCalculatedAmount(amount);
+                appliedCharges.add(applied);
+            }
+        }
+
+        order.setTaxAmount(taxAmount);
+        order.setServiceChargeAmount(serviceChargeAmount);
+        order.setTaxesAndCharges(appliedCharges);
+        order.setTotalAmount(subTotal.add(taxAmount).add(serviceChargeAmount));
 
         // 5. Persist (cascade saves items too)
         OrderDAO saved = orderRepository.save(order);

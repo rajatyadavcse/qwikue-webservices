@@ -1,6 +1,7 @@
 package com.kitchen.order.service;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.kitchen.order.dto.response.RestaurantChargeDto;
 import com.kitchen.order.exception.ExternalServiceException;
 import com.kitchen.order.exception.ResourceNotFoundException;
 import lombok.Data;
@@ -15,6 +16,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Validates restaurant, table, and menu entities against the restaurant-service
@@ -38,6 +40,7 @@ public class RestaurantValidationService {
         private Long restaurantId;
         private String restaurantName;
         private String status;
+        private List<RestaurantChargeDto> taxesAndCharges;
     }
 
     @Data
@@ -65,13 +68,14 @@ public class RestaurantValidationService {
     /**
      * Validates that a restaurant with the given ID exists.
      *
+     * @return RestaurantResponse containing restaurant details and tax configuration
      * @throws ResourceNotFoundException if restaurant not found (404)
      * @throws ExternalServiceException  if restaurant-service is unreachable or errors
      */
-    public void validateRestaurant(Long restaurantId) {
+    public RestaurantResponse validateRestaurant(Long restaurantId) {
         log.debug("Validating restaurantId={}", restaurantId);
         try {
-            restaurantServiceClient.get()
+            return restaurantServiceClient.get()
                     .uri("/restaurants/{id}", restaurantId)
                     .retrieve()
                     .body(RestaurantResponse.class);
