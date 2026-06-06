@@ -38,6 +38,9 @@ public class OrderDAO {
     @Column(name = "order_entity_type", length = 50)
     private String orderEntityType;
 
+    @Column(name = "token_no")
+    private Integer tokenNo;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private OrderStatus status;

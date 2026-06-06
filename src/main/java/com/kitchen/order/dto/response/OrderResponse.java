@@ -15,6 +15,7 @@ public class OrderResponse {
     private Long restaurantId;
     private String entityNo;
     private String orderEntityType;
+    private Integer tokenNo;
     private OrderStatus status;
     private BigDecimal subTotal;
     private BigDecimal taxAmount;

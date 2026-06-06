@@ -17,6 +17,7 @@ import com.kitchen.order.mapper.OrderItemMapper;
 import com.kitchen.order.mapper.OrderMapper;
 import com.kitchen.order.repository.OrderItemRepository;
 import com.kitchen.order.repository.OrderRepository;
+import com.kitchen.order.repository.RestaurantTokenCounterRepository;
 import com.kitchen.order.dto.event.OrderUpdateEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +45,9 @@ public class OrderServiceImpl implements IOrderService {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private RestaurantTokenCounterRepository tokenCounterRepository;
 
     @Autowired
     private OrderItemRepository orderItemRepository;
@@ -143,9 +147,14 @@ public class OrderServiceImpl implements IOrderService {
         order.setTaxesAndCharges(appliedCharges);
         order.setTotalAmount(subTotal.add(taxAmount).add(serviceChargeAmount));
 
+        // Generate daily token number for the restaurant (Asia/Kolkata timezone matching jackson timezone)
+        java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
+        int tokenNo = tokenCounterRepository.getNextTokenNo(request.getRestaurantId(), today);
+        order.setTokenNo(tokenNo);
+
         // 5. Persist (cascade saves items too)
         OrderDAO saved = orderRepository.save(order);
-        log.info("Order created successfully with orderId={}", saved.getOrderId());
+        log.info("Order created successfully with orderId={}, tokenNo={}", saved.getOrderId(), saved.getTokenNo());
 
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
         eventPublisher.publishEvent(new OrderUpdateEvent(this, response));

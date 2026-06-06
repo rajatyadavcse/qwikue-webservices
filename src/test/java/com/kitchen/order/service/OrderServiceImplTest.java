@@ -7,7 +7,9 @@ import com.kitchen.order.dto.response.OrderResponse;
 import com.kitchen.order.dto.response.RestaurantChargeDto;
 import com.kitchen.order.mapper.OrderMapper;
 import com.kitchen.order.repository.OrderRepository;
+import com.kitchen.order.repository.RestaurantTokenCounterRepository;
 import org.junit.jupiter.api.Test;
+import java.time.LocalDate;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -28,6 +30,9 @@ public class OrderServiceImplTest {
 
     @Mock
     private OrderRepository orderRepository;
+
+    @Mock
+    private RestaurantTokenCounterRepository tokenCounterRepository;
 
     @Mock
     private RestaurantValidationService validationService;
@@ -84,6 +89,9 @@ public class OrderServiceImplTest {
         menu.setIsAvailable(true);
         when(validationService.validateMenuAndGetPrice(101L)).thenReturn(menu);
 
+        // Mock token counter repository getNextTokenNo
+        when(tokenCounterRepository.getNextTokenNo(eq(1L), any(LocalDate.class))).thenReturn(5);
+
         // Mock orderRepository save
         when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> {
             OrderDAO order = invocation.getArgument(0);
@@ -102,6 +110,7 @@ public class OrderServiceImplTest {
             mockResponse.setTotalAmount(dao.getTotalAmount());
             mockResponse.setTaxesAndCharges(dao.getTaxesAndCharges());
             mockResponse.setOrderEntityType(dao.getOrderEntityType());
+            mockResponse.setTokenNo(dao.getTokenNo());
             return mockResponse;
         });
 
@@ -128,6 +137,9 @@ public class OrderServiceImplTest {
 
         // Verify orderEntityType
         assertEquals("DINE_IN", response.getOrderEntityType());
+
+        // Verify tokenNo
+        assertEquals(5, response.getTokenNo());
 
         verify(eventPublisher, times(1)).publishEvent(any());
     }
