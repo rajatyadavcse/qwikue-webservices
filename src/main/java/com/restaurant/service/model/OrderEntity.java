@@ -1,15 +1,16 @@
 package com.restaurant.service.model;
 
 import java.util.Date;
-
 import lombok.Data;
 
 @Data
-public class Table {
+public class OrderEntity {
 
-    private Long tableNo;
+    private String entityNo;
 
     private Long restaurantId;
+
+    private OrderEntityType orderEntityType;
 
     private String status;
 

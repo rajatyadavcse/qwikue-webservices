@@ -2,18 +2,25 @@ package com.restaurant.service.dao;
 
 import java.util.Date;
 
+import com.restaurant.service.model.OrderEntityType;
+
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.Data;
 
 @Entity
-@Table(name = "dinning_table")
+@Table(name = "order_entity")
 @Data
-public class TableDAO {
+public class OrderEntityDAO {
 
     @EmbeddedId
-    private TableId tableId;
+    private OrderEntityId orderEntityId;
+
+    @Enumerated(EnumType.STRING)
+    private OrderEntityType orderEntityType;
 
     private String status;
 

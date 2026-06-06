@@ -25,6 +25,8 @@ tags:
     description: Operations for managing restaurants
   - name: Menu
     description: Operations for managing menu items
+  - name: OrderEntity
+    description: Operations for managing order entities (Tables, Rooms, Beds)
 
 paths:
   # =========================================================================
@@ -430,6 +432,164 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  # =========================================================================
+  # Order Entity Endpoints
+  # =========================================================================
+  /entities:
+    post:
+      tags:
+        - OrderEntity
+      summary: Create a new order entity
+      description: Creates a new order entity (e.g. Table, Room, Bed) for a restaurant.
+      operationId: createOrderEntity
+      requestBody:
+        description: Order entity to be created
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderEntityRequest'
+      responses:
+        '201':
+          description: Order entity created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderEntity'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - OrderEntity
+      summary: Get all order entities by restaurant ID
+      description: Retrieves all order entities (e.g. Tables, Rooms, Beds) for a specific restaurant.
+      operationId: getOrderEntitiesByRestaurantId
+      parameters:
+        - name: restaurantId
+          in: query
+          description: ID of the restaurant
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      responses:
+        '200':
+          description: Successfully retrieved order entities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrderEntity'
+        '404':
+          description: Restaurant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - OrderEntity
+      summary: Update an existing order entity
+      description: Updates the order entity details.
+      operationId: updateOrderEntity
+      requestBody:
+        description: Updated order entity data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderEntityRequest'
+      responses:
+        '200':
+          description: Order entity updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderEntity'
+        '404':
+          description: Order entity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /entities/{entityNo}/restaurant/{restaurantId}:
+    get:
+      tags:
+        - OrderEntity
+      summary: Get order entity by entity number and restaurant ID
+      description: Retrieves a single order entity.
+      operationId: getOrderEntityById
+      parameters:
+        - name: entityNo
+          in: path
+          description: Entity number/name
+          required: true
+          schema:
+            type: string
+          example: "Room 101"
+        - name: restaurantId
+          in: path
+          description: Restaurant ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      responses:
+        '200':
+          description: Successfully retrieved order entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderEntity'
+        '404':
+          description: Order entity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - OrderEntity
+      summary: Delete an order entity
+      description: Deletes an order entity.
+      operationId: deleteOrderEntity
+      parameters:
+        - name: entityNo
+          in: path
+          description: Entity number/name to delete
+          required: true
+          schema:
+            type: string
+          example: "Room 101"
+        - name: restaurantId
+          in: path
+          description: Restaurant ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      responses:
+        '200':
+          description: Order entity deleted successfully
+        '404':
+          description: Order entity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 # ===========================================================================
 # Reusable Components
 # ===========================================================================
@@ -668,3 +828,76 @@ components:
           type: string
           description: The request path that caused the error
           example: "/restaurants/99"
+
+    # ---- Order Entity Schemas ----
+    OrderEntity:
+      type: object
+      description: Full representation of an order entity (Table, Room, Bed, etc.)
+      properties:
+        entityNo:
+          type: string
+          description: Unique identifier number/name for the entity
+          example: "Room 101"
+        restaurantId:
+          type: integer
+          format: int64
+          description: Associated restaurant ID
+          example: 1
+        orderEntityType:
+          type: string
+          description: Type of the entity
+          example: "ROOM"
+          enum:
+            - TABLE
+            - ROOM
+            - BED
+        status:
+          type: string
+          description: Current availability status
+          example: "ACTIVE"
+        QRUrl:
+          type: string
+          description: URL pointing to QR code
+          example: "http://qrcodes.com/room-101.png"
+        createdDate:
+          type: string
+          format: date-time
+          description: Created timestamp
+        updatedDate:
+          type: string
+          format: date-time
+          description: Last updated timestamp
+
+    OrderEntityRequest:
+      type: object
+      description: Request body to create or update an order entity
+      required:
+        - entityNo
+        - restaurantId
+        - orderEntityType
+      properties:
+        entityNo:
+          type: string
+          description: Unique identifier number/name for the entity
+          example: "Room 101"
+        restaurantId:
+          type: integer
+          format: int64
+          description: Associated restaurant ID
+          example: 1
+        orderEntityType:
+          type: string
+          description: Type of the entity
+          example: "ROOM"
+          enum:
+            - TABLE
+            - ROOM
+            - BED
+        status:
+          type: string
+          description: Current availability status
+          example: "ACTIVE"
+        QRUrl:
+          type: string
+          description: URL pointing to QR code
+          example: "http://qrcodes.com/room-101.png"
