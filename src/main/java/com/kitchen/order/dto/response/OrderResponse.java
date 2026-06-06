@@ -13,7 +13,8 @@ public class OrderResponse {
 
     private Long orderId;
     private Long restaurantId;
-    private Long tableNo;
+    private String entityNo;
+    private String orderEntityType;
     private OrderStatus status;
     private BigDecimal subTotal;
     private BigDecimal taxAmount;

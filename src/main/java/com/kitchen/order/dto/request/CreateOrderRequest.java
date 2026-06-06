@@ -1,6 +1,7 @@
 package com.kitchen.order.dto.request;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -13,8 +14,8 @@ public class CreateOrderRequest {
     @NotNull(message = "restaurantId is required")
     private Long restaurantId;
 
-    @NotNull(message = "tableNo is required")
-    private Long tableNo;
+    @NotBlank(message = "entityNo is required")
+    private String entityNo;
 
     /** Optional customer notes (e.g. "no onions, extra spice") */
     private String notes;

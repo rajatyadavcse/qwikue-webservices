@@ -46,10 +46,11 @@ public class RestaurantValidationService {
     @Data
     @NoArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class TableResponse {
-        private Long tableNo;
+    public static class EntityResponse {
+        private String entityNo;
         private Long restaurantId;
         private String status;
+        private String orderEntityType;
     }
 
     @Data
@@ -68,9 +69,11 @@ public class RestaurantValidationService {
     /**
      * Validates that a restaurant with the given ID exists.
      *
-     * @return RestaurantResponse containing restaurant details and tax configuration
+     * @return RestaurantResponse containing restaurant details and tax
+     *         configuration
      * @throws ResourceNotFoundException if restaurant not found (404)
-     * @throws ExternalServiceException  if restaurant-service is unreachable or errors
+     * @throws ExternalServiceException  if restaurant-service is unreachable or
+     *                                   errors
      */
     public RestaurantResponse validateRestaurant(Long restaurantId) {
         log.debug("Validating restaurantId={}", restaurantId);
@@ -83,38 +86,44 @@ public class RestaurantValidationService {
             throw new ResourceNotFoundException("Restaurant not found with id: " + restaurantId);
         } catch (RestClientException e) {
             log.error("restaurant-service call failed for restaurantId={}: {}", restaurantId, e.getMessage());
-            throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.", e);
+            throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.",
+                    e);
         }
     }
 
     /**
-     * Validates that a dining table exists for the given restaurant.
+     * Validates that an order entity exists for the given restaurant.
      *
-     * @throws ResourceNotFoundException if table not found (404)
-     * @throws ExternalServiceException  if restaurant-service is unreachable or errors
+     * @throws ResourceNotFoundException if entity not found (404)
+     * @throws ExternalServiceException  if restaurant-service is unreachable or
+     *                                   errors
      */
-    public void validateTable(Long tableNo, Long restaurantId) {
-        log.debug("Validating tableNo={}, restaurantId={}", tableNo, restaurantId);
+    public EntityResponse validateEntity(String entityNo, Long restaurantId) {
+        log.debug("Validating entityNo={}, restaurantId={}", entityNo, restaurantId);
         try {
-            restaurantServiceClient.get()
-                    .uri("/tables/{tableNo}/restaurant/{restaurantId}", tableNo, restaurantId)
+            return restaurantServiceClient.get()
+                    .uri("/entities/{entityNo}/restaurant/{restaurantId}", entityNo, restaurantId)
                     .retrieve()
-                    .body(TableResponse.class);
+                    .body(EntityResponse.class);
         } catch (HttpClientErrorException.NotFound e) {
             throw new ResourceNotFoundException(
-                    String.format("Table no %d not found for restaurantId: %d", tableNo, restaurantId));
+                    String.format("Entity no %s not found for restaurantId: %d", entityNo, restaurantId));
         } catch (RestClientException e) {
-            log.error("restaurant-service call failed for tableNo={}, restaurantId={}: {}", tableNo, restaurantId, e.getMessage());
-            throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.", e);
+            log.error("restaurant-service call failed for entityNo={}, restaurantId={}: {}", entityNo, restaurantId,
+                    e.getMessage());
+            throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.",
+                    e);
         }
     }
 
     /**
-     * Validates that a menu item exists and fetches its current price for snapshotting.
+     * Validates that a menu item exists and fetches its current price for
+     * snapshotting.
      *
      * @return MenuResponse containing the current unit price
      * @throws ResourceNotFoundException if menu item not found (404)
-     * @throws ExternalServiceException  if restaurant-service is unreachable or errors
+     * @throws ExternalServiceException  if restaurant-service is unreachable or
+     *                                   errors
      */
     public MenuResponse validateMenuAndGetPrice(Long menuId) {
         log.debug("Validating menuId={}", menuId);
@@ -138,7 +147,8 @@ public class RestaurantValidationService {
             throw e;
         } catch (RestClientException e) {
             log.error("restaurant-service call failed for menuId={}: {}", menuId, e.getMessage());
-            throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.", e);
+            throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.",
+                    e);
         }
     }
 }

@@ -22,11 +22,11 @@ public class OrderDAO {
     private Long orderId;
 
     /**
-     * References public.dinning_table composite PK (tableNo + restaurantId).
+     * References public.order_entity composite PK (entityNo + restaurantId).
      * Validated via restaurant-service before persisting.
      */
-    @Column(nullable = false)
-    private Long tableNo;
+    @Column(name = "entity_no", nullable = false)
+    private String entityNo;
 
     /**
      * References public.restaurant.restaurantId.
@@ -34,6 +34,9 @@ public class OrderDAO {
      */
     @Column(nullable = false)
     private Long restaurantId;
+
+    @Column(name = "order_entity_type", length = 50)
+    private String orderEntityType;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

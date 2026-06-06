@@ -64,18 +64,21 @@ public class OrderServiceImpl implements IOrderService {
 
     @Override
     public OrderResponse createOrder(CreateOrderRequest request) {
-        log.info("Creating order for restaurantId={}, tableNo={}", request.getRestaurantId(), request.getTableNo());
+        log.info("Creating order for restaurantId={}, entityNo={}", request.getRestaurantId(), request.getEntityNo());
 
         // 1. Validate restaurant exists and get configurations
         RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(request.getRestaurantId());
 
-        // 2. Validate table belongs to restaurant
-        validationService.validateTable(request.getTableNo(), request.getRestaurantId());
+        // 2. Validate entity belongs to restaurant
+        RestaurantValidationService.EntityResponse entity = validationService.validateEntity(request.getEntityNo(), request.getRestaurantId());
 
         // 3. Build the order entity
         OrderDAO order = new OrderDAO();
         order.setRestaurantId(request.getRestaurantId());
-        order.setTableNo(request.getTableNo());
+        order.setEntityNo(request.getEntityNo());
+        if (entity != null) {
+            order.setOrderEntityType(entity.getOrderEntityType());
+        }
         order.setNotes(request.getNotes());
         order.setStatus(OrderStatus.PENDING);
 

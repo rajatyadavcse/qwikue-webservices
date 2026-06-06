@@ -46,7 +46,7 @@ public class OrderServiceImplTest {
         // Arrange
         CreateOrderRequest request = new CreateOrderRequest();
         request.setRestaurantId(1L);
-        request.setTableNo(10L);
+        request.setEntityNo("10");
         request.setNotes("No onions");
 
         OrderItemRequest itemRequest = new OrderItemRequest();
@@ -68,8 +68,13 @@ public class OrderServiceImplTest {
 
         when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
 
-        // Mock Table validation
-        doNothing().when(validationService).validateTable(10L, 1L);
+        // Mock Entity validation
+        RestaurantValidationService.EntityResponse entity = new RestaurantValidationService.EntityResponse();
+        entity.setEntityNo("10");
+        entity.setRestaurantId(1L);
+        entity.setStatus("ACTIVE");
+        entity.setOrderEntityType("DINE_IN");
+        when(validationService.validateEntity("10", 1L)).thenReturn(entity);
 
         // Mock Menu price fetching: unit price of $50.00
         RestaurantValidationService.MenuResponse menu = new RestaurantValidationService.MenuResponse();
@@ -96,6 +101,7 @@ public class OrderServiceImplTest {
             mockResponse.setServiceChargeAmount(dao.getServiceChargeAmount());
             mockResponse.setTotalAmount(dao.getTotalAmount());
             mockResponse.setTaxesAndCharges(dao.getTaxesAndCharges());
+            mockResponse.setOrderEntityType(dao.getOrderEntityType());
             return mockResponse;
         });
 
@@ -119,6 +125,9 @@ public class OrderServiceImplTest {
         assertEquals(3, response.getTaxesAndCharges().size());
         assertEquals("CGST", response.getTaxesAndCharges().get(0).getName());
         assertEquals(new BigDecimal("2.50"), response.getTaxesAndCharges().get(0).getCalculatedAmount());
+
+        // Verify orderEntityType
+        assertEquals("DINE_IN", response.getOrderEntityType());
 
         verify(eventPublisher, times(1)).publishEvent(any());
     }
