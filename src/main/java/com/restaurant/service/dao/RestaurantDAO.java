@@ -1,5 +1,7 @@
 package com.restaurant.service.dao;
 
+import com.restaurant.service.model.EstablishmentType;
+import com.restaurant.service.model.OrderEntityType;
 import com.restaurant.service.model.RestaurantCharge;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -33,6 +35,13 @@ public class RestaurantDAO {
     private String email;
 
     private String type;
+
+    @Enumerated(EnumType.STRING)
+    private EstablishmentType establishmentType;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "order_entity_types", columnDefinition = "jsonb")
+    private List<OrderEntityType> orderEntityTypes = new ArrayList<>();
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "taxes_and_charges", columnDefinition = "jsonb")

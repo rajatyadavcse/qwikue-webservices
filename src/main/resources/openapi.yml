@@ -490,6 +490,24 @@ components:
             - FAST_FOOD
             - CAFE
             - BUFFET
+        establishmentType:
+          type: string
+          description: Type of the establishment
+          example: "RESTAURANT"
+          enum:
+            - RESTAURANT
+            - HOTEL
+            - HOSPITAL
+        orderEntityTypes:
+          type: array
+          description: Supported order entity types
+          example: ["TABLE"]
+          items:
+            type: string
+            enum:
+              - TABLE
+              - ROOM
+              - BED
 
     RestaurantRequest:
       type: object
@@ -523,6 +541,24 @@ components:
           type: string
           description: Type/category of the restaurant
           example: "FINE_DINING"
+        establishmentType:
+          type: string
+          description: Type of the establishment
+          example: "RESTAURANT"
+          enum:
+            - RESTAURANT
+            - HOTEL
+            - HOSPITAL
+        orderEntityTypes:
+          type: array
+          description: Supported order entity types
+          example: ["TABLE"]
+          items:
+            type: string
+            enum:
+              - TABLE
+              - ROOM
+              - BED
 
     # ---- Menu Schemas ----
     Menu:

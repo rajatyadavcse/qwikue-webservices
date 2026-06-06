@@ -59,6 +59,8 @@ public class RestaurantServiceImpl implements IRestaurantService {
         existingRestaurantDAO.setStatus(restaurantDetails.getStatus());
         existingRestaurantDAO.setEmail(restaurantDetails.getEmail());
         existingRestaurantDAO.setType(restaurantDetails.getType());
+        existingRestaurantDAO.setEstablishmentType(restaurantDetails.getEstablishmentType());
+        existingRestaurantDAO.setOrderEntityTypes(restaurantDetails.getOrderEntityTypes());
         existingRestaurantDAO.setTaxesAndCharges(restaurantDetails.getTaxesAndCharges());
         existingRestaurantDAO.setUpdatedDate(new Date());
 

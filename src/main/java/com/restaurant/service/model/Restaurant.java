@@ -37,6 +37,10 @@ public class Restaurant implements Serializable {
 
     private String type;
 
+    private EstablishmentType establishmentType;
+
+    private List<OrderEntityType> orderEntityTypes;
+
     private List<RestaurantCharge> taxesAndCharges;
 }
 
