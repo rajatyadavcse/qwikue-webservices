@@ -1,5 +1,6 @@
 package com.restaurant.service.service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,8 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
     @Override
     public OrderEntity createOrderEntity(OrderEntity orderEntity) {
         if (orderEntity.getEntityNo() == null || orderEntity.getRestaurantId() == null) {
-            throw new ResourceNotFoundException("Entity No and Restaurant ID are required for creating an order entity");
+            throw new ResourceNotFoundException(
+                    "Entity No and Restaurant ID are required for creating an order entity");
         }
 
         if (!restaurantRepository.existsById(orderEntity.getRestaurantId())) {
@@ -39,13 +41,13 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
         OrderEntityId orderEntityId = new OrderEntityId();
         orderEntityId.setEntityNo(orderEntity.getEntityNo());
         orderEntityId.setRestaurantId(orderEntity.getRestaurantId());
-        
+
         if (orderEntityRepository.existsById(orderEntityId)) {
             throw new ResourceAlreadyExistsException("A record with entityNo " + orderEntity.getEntityNo()
                     + " and restaurantId " + orderEntity.getRestaurantId()
                     + " already exists. Please try with different entityNo or try updating the existing record");
         }
-        
+
         OrderEntityDAO orderEntityDAO = orderEntityMapper.orderEntityToOrderEntityDAO(orderEntity);
         return orderEntityMapper.orderEntityDAOToOrderEntity(orderEntityRepository.save(orderEntityDAO));
     }
@@ -55,8 +57,9 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
         OrderEntityId orderEntityId = new OrderEntityId();
         orderEntityId.setEntityNo(orderEntity.getEntityNo());
         orderEntityId.setRestaurantId(orderEntity.getRestaurantId());
-        
-        if (orderEntity.getEntityNo() == null || orderEntity.getRestaurantId() == null || !orderEntityRepository.existsById(orderEntityId)) {
+
+        if (orderEntity.getEntityNo() == null || orderEntity.getRestaurantId() == null
+                || !orderEntityRepository.existsById(orderEntityId)) {
             throw new ResourceNotFoundException("Order Entity ID is required for update");
         }
 
@@ -69,7 +72,7 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
         OrderEntityId orderEntityId = new OrderEntityId();
         orderEntityId.setEntityNo(entityNo);
         orderEntityId.setRestaurantId(restaurantId);
-        
+
         if (entityNo == null || restaurantId == null || !orderEntityRepository.existsById(orderEntityId)) {
             throw new ResourceNotFoundException("Record with entityNo " + entityNo
                     + " and restaurantId " + restaurantId + " not found");
@@ -79,10 +82,14 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
 
     @Override
     public List<OrderEntity> getOrderEntitiesByRestaurantId(Long restaurantId) {
-        if (restaurantId == null || !orderEntityRepository.existsByOrderEntityIdRestaurantId(restaurantId)) {
+        if (restaurantId == null) {
             throw new ResourceNotFoundException("Record with restaurantId " + restaurantId + " not found");
         }
-        return orderEntityMapper.orderEntityDAOListToOrderEntityList(orderEntityRepository.findAllByOrderEntityIdRestaurantId(restaurantId));
+        if (orderEntityRepository.findAllByOrderEntityIdRestaurantId(restaurantId).isEmpty()) {
+            return new ArrayList<>();
+        }
+        return orderEntityMapper.orderEntityDAOListToOrderEntityList(
+                orderEntityRepository.findAllByOrderEntityIdRestaurantId(restaurantId));
     }
 
     @Override
@@ -90,7 +97,7 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
         OrderEntityId orderEntityId = new OrderEntityId();
         orderEntityId.setEntityNo(entityNo);
         orderEntityId.setRestaurantId(restaurantId);
-        
+
         if (entityNo == null || restaurantId == null || !orderEntityRepository.existsById(orderEntityId)) {
             throw new ResourceNotFoundException("Record with entityNo " + entityNo
                     + " and restaurantId " + restaurantId + " not found");
