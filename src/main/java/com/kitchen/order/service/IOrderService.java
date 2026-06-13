@@ -49,4 +49,9 @@ public interface IOrderService {
      * Active = PENDING, PREPARING, READY
      */
     List<OrderResponse> getKitchenOrders(Long restaurantId);
+
+    /**
+     * Completes payment for an order, updates payment status, and sets the transaction reference.
+     */
+    OrderResponse completePayment(Long orderId, String razorpayPaymentId);
 }

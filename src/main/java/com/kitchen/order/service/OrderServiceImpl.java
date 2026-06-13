@@ -11,8 +11,11 @@ import com.kitchen.order.dto.response.PagedResponse;
 import com.kitchen.order.dto.response.OrderAppliedCharge;
 import com.kitchen.order.dto.response.RestaurantChargeDto;
 import com.kitchen.order.enums.OrderStatus;
+import com.kitchen.order.enums.PaymentMode;
+import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.exception.InvalidStatusTransitionException;
 import com.kitchen.order.exception.ResourceNotFoundException;
+import com.kitchen.order.exception.ExternalServiceException;
 import com.kitchen.order.mapper.OrderItemMapper;
 import com.kitchen.order.mapper.OrderMapper;
 import com.kitchen.order.repository.OrderItemRepository;
@@ -64,6 +67,9 @@ public class OrderServiceImpl implements IOrderService {
     @Autowired
     private ApplicationEventPublisher eventPublisher;
 
+    @Autowired
+    private IPaymentService paymentService;
+
     // ── Create ─────────────────────────────────────────────────────────────────
 
     @Override
@@ -85,6 +91,8 @@ public class OrderServiceImpl implements IOrderService {
         }
         order.setNotes(request.getNotes());
         order.setStatus(OrderStatus.PENDING);
+        order.setPaymentMode(request.getPaymentMode() != null ? request.getPaymentMode() : PaymentMode.CASH);
+        order.setPaymentStatus(PaymentStatus.PENDING);
 
         // 4. Build order items — validate each menu item and snapshot price
         BigDecimal subTotal = BigDecimal.ZERO;
@@ -154,6 +162,24 @@ public class OrderServiceImpl implements IOrderService {
 
         // 5. Persist (cascade saves items too)
         OrderDAO saved = orderRepository.save(order);
+
+        // If payment mode is UPI, generate Razorpay Order ID and update
+        if (saved.getPaymentMode() == PaymentMode.UPI) {
+            try {
+                String razorpayOrderId = paymentService.createRoutedOrder(
+                        saved.getOrderId(),
+                        saved.getTotalAmount(),
+                        restaurant.getRazorpayLinkedAccountId()
+                );
+                saved.setRazorpayOrderId(razorpayOrderId);
+                saved = orderRepository.save(saved); // Update order with razorpayOrderId
+            } catch (Exception e) {
+                log.error("Failed to create Razorpay Order for orderId={}: {}", saved.getOrderId(), e.getMessage());
+                throw new ExternalServiceException(
+                        "Payment gateway integration failed: " + e.getMessage(), e);
+            }
+        }
+
         log.info("Order created successfully with orderId={}, tokenNo={}", saved.getOrderId(), saved.getTokenNo());
 
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
@@ -297,6 +323,30 @@ public class OrderServiceImpl implements IOrderService {
         OrderDAO saved = orderRepository.save(order);
 
         log.info("Order {} cancelled. Reason: {}", orderId, reason);
+        OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
+        eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
+        return response;
+    }
+
+    @Override
+    public OrderResponse completePayment(Long orderId, String razorpayPaymentId) {
+        log.info("Completing payment for orderId={}, razorpayPaymentId={}", orderId, razorpayPaymentId);
+        OrderDAO order = findOrderById(orderId);
+        
+        order.setPaymentStatus(PaymentStatus.COMPLETED);
+        order.setRazorpayPaymentId(razorpayPaymentId);
+        
+        // Auto-transition status to PREPARING
+        if (order.getStatus() == OrderStatus.PENDING) {
+            order.setStatus(OrderStatus.PREPARING);
+            order.setAcceptedAt(LocalDateTime.now());
+            // Default prepMinutes to 15 mins if not set
+            order.setPrepMinutes(15);
+            order.setInitialReadyAt(order.getAcceptedAt().plusMinutes(15));
+            order.setReadyAt(order.getAcceptedAt().plusMinutes(15));
+        }
+        
+        OrderDAO saved = orderRepository.save(order);
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
         eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
         return response;

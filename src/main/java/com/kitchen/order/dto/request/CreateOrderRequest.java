@@ -1,5 +1,6 @@
 package com.kitchen.order.dto.request;
 
+import com.kitchen.order.enums.PaymentMode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -23,4 +24,6 @@ public class CreateOrderRequest {
     @NotEmpty(message = "Order must contain at least one item")
     @Valid
     private List<OrderItemRequest> items;
+
+    private PaymentMode paymentMode = PaymentMode.CASH;
 }

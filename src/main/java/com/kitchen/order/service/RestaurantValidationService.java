@@ -41,6 +41,7 @@ public class RestaurantValidationService {
         private String restaurantName;
         private String status;
         private List<RestaurantChargeDto> taxesAndCharges;
+        private String razorpayLinkedAccountId;
     }
 
     @Data

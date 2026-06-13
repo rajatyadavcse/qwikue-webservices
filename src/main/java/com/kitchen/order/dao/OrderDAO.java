@@ -1,6 +1,8 @@
 package com.kitchen.order.dao;
 
 import com.kitchen.order.enums.OrderStatus;
+import com.kitchen.order.enums.PaymentMode;
+import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.dto.response.OrderAppliedCharge;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -85,6 +87,20 @@ public class OrderDAO {
 
     @Column(columnDefinition = "TEXT")
     private String reason;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_mode", nullable = false, length = 20)
+    private PaymentMode paymentMode = PaymentMode.CASH;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", nullable = false, length = 20)
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING;
+
+    @Column(name = "razorpay_order_id", length = 100)
+    private String razorpayOrderId;
+
+    @Column(name = "razorpay_payment_id", length = 100)
+    private String razorpayPaymentId;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -1,6 +1,8 @@
 package com.kitchen.order.dto.response;
 
 import com.kitchen.order.enums.OrderStatus;
+import com.kitchen.order.enums.PaymentMode;
+import com.kitchen.order.enums.PaymentStatus;
 
 import lombok.Data;
 
@@ -33,4 +35,8 @@ public class OrderResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<OrderItemResponse> items;
+    private PaymentMode paymentMode;
+    private PaymentStatus paymentStatus;
+    private String razorpayOrderId;
+    private String razorpayPaymentId;
 }
