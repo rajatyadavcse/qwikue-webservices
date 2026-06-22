@@ -16,6 +16,7 @@ import java.util.Set;
  */
 public enum OrderStatus {
 
+    PAYMENT_PENDING,
     PENDING,
     PREPARING,
     READY,
@@ -24,6 +25,7 @@ public enum OrderStatus {
     REJECTED;
 
     private static final Map<OrderStatus, Set<OrderStatus>> VALID_TRANSITIONS = Map.of(
+            PAYMENT_PENDING, EnumSet.of(PENDING, CANCELLED),
             PENDING,   EnumSet.of(PREPARING, CANCELLED),
             PREPARING, EnumSet.of(READY, CANCELLED),
             READY,     EnumSet.of(COMPLETED),

@@ -5,6 +5,9 @@ import com.kitchen.order.dto.request.CreateOrderRequest;
 import com.kitchen.order.dto.request.OrderItemRequest;
 import com.kitchen.order.dto.response.OrderResponse;
 import com.kitchen.order.dto.response.RestaurantChargeDto;
+import com.kitchen.order.enums.OrderStatus;
+import com.kitchen.order.enums.PaymentMode;
+import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.mapper.OrderMapper;
 import com.kitchen.order.repository.OrderRepository;
 import com.kitchen.order.repository.RestaurantTokenCounterRepository;
@@ -22,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -43,6 +47,9 @@ public class OrderServiceImplTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private IPaymentService paymentService;
+
     @InjectMocks
     private OrderServiceImpl orderService;
 
@@ -53,6 +60,7 @@ public class OrderServiceImplTest {
         request.setRestaurantId(1L);
         request.setEntityNo("10");
         request.setNotes("No onions");
+        request.setPaymentMode(PaymentMode.CASH);
 
         OrderItemRequest itemRequest = new OrderItemRequest();
         itemRequest.setMenuId(101L);
@@ -111,6 +119,8 @@ public class OrderServiceImplTest {
             mockResponse.setTaxesAndCharges(dao.getTaxesAndCharges());
             mockResponse.setOrderEntityType(dao.getOrderEntityType());
             mockResponse.setTokenNo(dao.getTokenNo());
+            mockResponse.setStatus(dao.getStatus());
+            mockResponse.setPaymentMode(dao.getPaymentMode());
             return mockResponse;
         });
 
@@ -140,7 +150,118 @@ public class OrderServiceImplTest {
 
         // Verify tokenNo
         assertEquals(5, response.getTokenNo());
+        assertEquals(OrderStatus.PENDING, response.getStatus());
+        assertEquals(PaymentMode.CASH, response.getPaymentMode());
 
+        verify(eventPublisher, times(1)).publishEvent(any());
+    }
+
+    @Test
+    public void testCreateOnlineOrderDoesNotGenerateTokenAndSetsPaymentPending() throws Exception {
+        // Arrange
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setRestaurantId(1L);
+        request.setEntityNo("10");
+        request.setNotes("No onions");
+        request.setPaymentMode(PaymentMode.ONLINE);
+
+        OrderItemRequest itemRequest = new OrderItemRequest();
+        itemRequest.setMenuId(101L);
+        itemRequest.setQuantity(2);
+        request.setItems(Collections.singletonList(itemRequest));
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        restaurant.setRestaurantName("Tasty Restaurant");
+        restaurant.setStatus("ACTIVE");
+        restaurant.setRazorpayKeyId("key_123");
+        restaurant.setRazorpayKeySecret("secret_123");
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        RestaurantValidationService.EntityResponse entity = new RestaurantValidationService.EntityResponse();
+        entity.setEntityNo("10");
+        entity.setRestaurantId(1L);
+        entity.setStatus("ACTIVE");
+        entity.setOrderEntityType("DINE_IN");
+        when(validationService.validateEntity("10", 1L)).thenReturn(entity);
+
+        RestaurantValidationService.MenuResponse menu = new RestaurantValidationService.MenuResponse();
+        menu.setMenuId(101L);
+        menu.setItemName("Pizza");
+        menu.setPrice(new BigDecimal("50.00"));
+        menu.setIsAvailable(true);
+        when(validationService.validateMenuAndGetPrice(101L)).thenReturn(menu);
+
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO order = invocation.getArgument(0);
+            order.setOrderId(123L);
+            return order;
+        });
+
+        when(paymentService.createOrder(eq(123L), any(BigDecimal.class), eq("key_123"), eq("secret_123")))
+                .thenReturn("razorpay_order_id_test");
+
+        OrderResponse mockResponse = new OrderResponse();
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            mockResponse.setOrderId(dao.getOrderId());
+            mockResponse.setPaymentMode(dao.getPaymentMode());
+            mockResponse.setStatus(dao.getStatus());
+            mockResponse.setTokenNo(dao.getTokenNo());
+            return mockResponse;
+        });
+
+        // Act
+        OrderResponse response = orderService.createOrder(request);
+
+        // Assert
+        assertEquals(PaymentMode.ONLINE, response.getPaymentMode());
+        assertEquals(OrderStatus.PAYMENT_PENDING, response.getStatus());
+        assertNull(response.getTokenNo());
+
+        // Verify token generation was NOT called
+        verify(tokenCounterRepository, never()).getNextTokenNo(anyLong(), any(LocalDate.class));
+        // Verify payment service was called
+        verify(paymentService, times(1)).createOrder(eq(123L), any(BigDecimal.class), eq("key_123"), eq("secret_123"));
+        verify(eventPublisher, times(1)).publishEvent(any());
+    }
+
+    @Test
+    public void testCompletePaymentTransitionsToPendingAndGeneratesToken() {
+        // Arrange
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(123L);
+        order.setRestaurantId(1L);
+        order.setPaymentMode(PaymentMode.ONLINE);
+        order.setStatus(OrderStatus.PAYMENT_PENDING);
+        order.setPaymentStatus(PaymentStatus.PENDING);
+
+        when(orderRepository.findById(123L)).thenReturn(java.util.Optional.of(order));
+        when(tokenCounterRepository.getNextTokenNo(eq(1L), any(LocalDate.class))).thenReturn(15);
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        OrderResponse mockResponse = new OrderResponse();
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            mockResponse.setOrderId(dao.getOrderId());
+            mockResponse.setPaymentMode(dao.getPaymentMode());
+            mockResponse.setStatus(dao.getStatus());
+            mockResponse.setTokenNo(dao.getTokenNo());
+            mockResponse.setPaymentStatus(dao.getPaymentStatus());
+            mockResponse.setRazorpayPaymentId(dao.getRazorpayPaymentId());
+            return mockResponse;
+        });
+
+        // Act
+        OrderResponse response = orderService.completePayment(123L, "pay_payment123");
+
+        // Assert
+        assertEquals(OrderStatus.PENDING, response.getStatus());
+        assertEquals(PaymentStatus.COMPLETED, response.getPaymentStatus());
+        assertEquals(15, response.getTokenNo());
+        assertEquals("pay_payment123", response.getRazorpayPaymentId());
+
+        verify(tokenCounterRepository, times(1)).getNextTokenNo(eq(1L), any(LocalDate.class));
         verify(eventPublisher, times(1)).publishEvent(any());
     }
 }

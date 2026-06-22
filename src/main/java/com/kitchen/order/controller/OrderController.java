@@ -123,7 +123,7 @@ public class OrderController {
     @Operation(
             summary = "Cancel an order",
             description = "Soft-cancels an order by setting status to CANCELLED. " +
-                          "Only PENDING and PREPARING orders can be cancelled. Reason is mandatory."
+                          "Only PAYMENT_PENDING, PENDING and PREPARING orders can be cancelled. Reason is mandatory."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Order cancelled"),

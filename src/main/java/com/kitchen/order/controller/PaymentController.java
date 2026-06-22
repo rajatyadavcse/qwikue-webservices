@@ -36,7 +36,7 @@ public class PaymentController {
     @Operation(
             summary = "Verify Razorpay payment signature",
             description = "Verifies the cryptographic payment signature returned by Razorpay Checkout. " +
-                          "If valid, marks payment status as COMPLETED and order status as PREPARING."
+                          "If valid, marks payment status as COMPLETED and order status as PENDING."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Payment verified and order status updated successfully"),

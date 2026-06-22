@@ -90,9 +90,13 @@ public class OrderServiceImpl implements IOrderService {
             order.setOrderEntityType(entity.getOrderEntityType());
         }
         order.setNotes(request.getNotes());
-        order.setStatus(OrderStatus.PENDING);
         order.setPaymentMode(request.getPaymentMode() != null ? request.getPaymentMode() : PaymentMode.CASH);
         order.setPaymentStatus(PaymentStatus.PENDING);
+        if (order.getPaymentMode() == PaymentMode.CASH) {
+            order.setStatus(OrderStatus.PENDING);
+        } else {
+            order.setStatus(OrderStatus.PAYMENT_PENDING);
+        }
 
         // 4. Build order items — validate each menu item and snapshot price
         BigDecimal subTotal = BigDecimal.ZERO;
@@ -155,16 +159,20 @@ public class OrderServiceImpl implements IOrderService {
         order.setTaxesAndCharges(appliedCharges);
         order.setTotalAmount(subTotal.add(taxAmount).add(serviceChargeAmount));
 
-        // Generate daily token number for the restaurant (Asia/Kolkata timezone matching jackson timezone)
-        java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
-        int tokenNo = tokenCounterRepository.getNextTokenNo(request.getRestaurantId(), today);
-        order.setTokenNo(tokenNo);
+        if (order.getPaymentMode() == PaymentMode.CASH) {
+            // Generate daily token number for the restaurant (Asia/Kolkata timezone matching jackson timezone)
+            java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
+            int tokenNo = tokenCounterRepository.getNextTokenNo(request.getRestaurantId(), today);
+            order.setTokenNo(tokenNo);
+        } else {
+            order.setTokenNo(null);
+        }
 
         // 5. Persist (cascade saves items too)
         OrderDAO saved = orderRepository.save(order);
 
-        // If payment mode is UPI, generate Razorpay Order ID and update
-        if (saved.getPaymentMode() == PaymentMode.UPI) {
+        // If payment mode is ONLINE, generate Razorpay Order ID and update
+        if (saved.getPaymentMode() == PaymentMode.ONLINE) {
             try {
                 String razorpayOrderId = paymentService.createOrder(
                         saved.getOrderId(),
@@ -184,7 +192,7 @@ public class OrderServiceImpl implements IOrderService {
         log.info("Order created successfully with orderId={}, tokenNo={}", saved.getOrderId(), saved.getTokenNo());
 
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
-        if (saved.getPaymentMode() == PaymentMode.UPI) {
+        if (saved.getPaymentMode() == PaymentMode.ONLINE) {
             response.setRazorpayKeyId(restaurant.getRazorpayKeyId());
         }
         eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
@@ -198,7 +206,7 @@ public class OrderServiceImpl implements IOrderService {
     public OrderResponse getOrderById(Long orderId) {
         OrderDAO order = findOrderById(orderId);
         OrderResponse response = orderMapper.orderDAOToOrderResponse(order);
-        if (response.getPaymentMode() == PaymentMode.UPI && response.getPaymentStatus() == PaymentStatus.PENDING) {
+        if (response.getPaymentMode() == PaymentMode.ONLINE && response.getPaymentStatus() == PaymentStatus.PENDING) {
             try {
                 RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(response.getRestaurantId());
                 response.setRazorpayKeyId(restaurant.getRazorpayKeyId());
@@ -303,6 +311,12 @@ public class OrderServiceImpl implements IOrderService {
             order.setCompletedAt(LocalDateTime.now());
         }
 
+        if (newStatus == OrderStatus.PENDING && order.getTokenNo() == null) {
+            java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
+            int tokenNo = tokenCounterRepository.getNextTokenNo(order.getRestaurantId(), today);
+            order.setTokenNo(tokenNo);
+        }
+
         order.setStatus(newStatus);
         if (request.getReason() != null) {
             order.setReason(request.getReason());
@@ -349,14 +363,13 @@ public class OrderServiceImpl implements IOrderService {
         order.setPaymentStatus(PaymentStatus.COMPLETED);
         order.setRazorpayPaymentId(razorpayPaymentId);
         
-        // Auto-transition status to PREPARING
-        if (order.getStatus() == OrderStatus.PENDING) {
-            order.setStatus(OrderStatus.PREPARING);
-            order.setAcceptedAt(LocalDateTime.now());
-            // Default prepMinutes to 15 mins if not set
-            order.setPrepMinutes(15);
-            order.setInitialReadyAt(order.getAcceptedAt().plusMinutes(15));
-            order.setReadyAt(order.getAcceptedAt().plusMinutes(15));
+        // Auto-transition status to PENDING and generate token
+        if (order.getStatus() == OrderStatus.PAYMENT_PENDING) {
+            order.setStatus(OrderStatus.PENDING);
+            // Generate daily token number for the restaurant (Asia/Kolkata timezone)
+            java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
+            int tokenNo = tokenCounterRepository.getNextTokenNo(order.getRestaurantId(), today);
+            order.setTokenNo(tokenNo);
         }
         
         OrderDAO saved = orderRepository.save(order);

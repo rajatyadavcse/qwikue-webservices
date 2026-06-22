@@ -90,6 +90,10 @@ public class OrderStreamService {
     @EventListener
     public void handleOrderUpdateEvent(OrderUpdateEvent event) {
         OrderResponse order = event.getOrder();
+        if (order.getStatus() == com.kitchen.order.enums.OrderStatus.PAYMENT_PENDING) {
+            log.info("SSE Stream Skipping broadcast for orderId={} as status is PAYMENT_PENDING", order.getOrderId());
+            return;
+        }
         log.info("SSE Stream Broadcasting status update for orderId={}, status={}", order.getOrderId(), order.getStatus());
 
         // 1. Notify the individual customer tracking screen
