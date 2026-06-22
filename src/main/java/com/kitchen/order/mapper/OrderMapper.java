@@ -15,6 +15,7 @@ public interface OrderMapper {
      * items list is mapped via OrderItemMapper (registered in 'uses').
      */
     @Mapping(source = "items", target = "items")
+    @Mapping(target = "razorpayKeyId", ignore = true)
     OrderResponse orderDAOToOrderResponse(OrderDAO orderDAO);
 
     List<OrderResponse> orderDAOListToResponseList(List<OrderDAO> orderDAOs);

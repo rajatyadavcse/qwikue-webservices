@@ -30,6 +30,9 @@ public class PaymentController {
     @Autowired
     private IOrderService orderService;
 
+    @Autowired
+    private com.kitchen.order.service.RestaurantValidationService validationService;
+
     @Operation(
             summary = "Verify Razorpay payment signature",
             description = "Verifies the cryptographic payment signature returned by Razorpay Checkout. " +
@@ -44,10 +47,21 @@ public class PaymentController {
     public ResponseEntity<OrderResponse> verifyPayment(@Valid @RequestBody PaymentVerificationRequest request) {
         log.info("Received payment verification request for orderId={}", request.getOrderId());
         
+        OrderResponse order = orderService.getOrderById(request.getOrderId());
+        if (order == null) {
+            log.warn("Order not found for orderId={}", request.getOrderId());
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        // Fetch restaurant details using the restaurantId from the order to get the keySecret
+        com.kitchen.order.service.RestaurantValidationService.RestaurantResponse restaurant = 
+                validationService.validateRestaurant(order.getRestaurantId());
+        
         boolean isValidSignature = paymentService.verifyPaymentSignature(
                 request.getRazorpayOrderId(),
                 request.getRazorpayPaymentId(),
-                request.getRazorpaySignature()
+                request.getRazorpaySignature(),
+                restaurant.getRazorpayKeySecret()
         );
 
         if (!isValidSignature) {
@@ -58,4 +72,5 @@ public class PaymentController {
         OrderResponse updatedOrder = orderService.completePayment(request.getOrderId(), request.getRazorpayPaymentId());
         return ResponseEntity.ok(updatedOrder);
     }
+
 }

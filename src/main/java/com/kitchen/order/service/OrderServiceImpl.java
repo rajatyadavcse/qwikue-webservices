@@ -166,10 +166,11 @@ public class OrderServiceImpl implements IOrderService {
         // If payment mode is UPI, generate Razorpay Order ID and update
         if (saved.getPaymentMode() == PaymentMode.UPI) {
             try {
-                String razorpayOrderId = paymentService.createRoutedOrder(
+                String razorpayOrderId = paymentService.createOrder(
                         saved.getOrderId(),
                         saved.getTotalAmount(),
-                        restaurant.getRazorpayLinkedAccountId()
+                        restaurant.getRazorpayKeyId(),
+                        restaurant.getRazorpayKeySecret()
                 );
                 saved.setRazorpayOrderId(razorpayOrderId);
                 saved = orderRepository.save(saved); // Update order with razorpayOrderId
@@ -183,6 +184,9 @@ public class OrderServiceImpl implements IOrderService {
         log.info("Order created successfully with orderId={}, tokenNo={}", saved.getOrderId(), saved.getTokenNo());
 
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
+        if (saved.getPaymentMode() == PaymentMode.UPI) {
+            response.setRazorpayKeyId(restaurant.getRazorpayKeyId());
+        }
         eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
         return response;
     }
@@ -193,7 +197,16 @@ public class OrderServiceImpl implements IOrderService {
     @Transactional(readOnly = true)
     public OrderResponse getOrderById(Long orderId) {
         OrderDAO order = findOrderById(orderId);
-        return orderMapper.orderDAOToOrderResponse(order);
+        OrderResponse response = orderMapper.orderDAOToOrderResponse(order);
+        if (response.getPaymentMode() == PaymentMode.UPI && response.getPaymentStatus() == PaymentStatus.PENDING) {
+            try {
+                RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(response.getRestaurantId());
+                response.setRazorpayKeyId(restaurant.getRazorpayKeyId());
+            } catch (Exception e) {
+                log.error("Failed to load restaurant details for orderId={}: {}", orderId, e.getMessage());
+            }
+        }
+        return response;
     }
 
     @Override

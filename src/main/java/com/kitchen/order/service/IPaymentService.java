@@ -5,7 +5,7 @@ import java.math.BigDecimal;
 
 public interface IPaymentService {
 
-    String createRoutedOrder(Long orderId, BigDecimal totalAmount, String linkedAccountId) throws RazorpayException;
+    String createOrder(Long orderId, BigDecimal totalAmount, String keyId, String keySecret) throws RazorpayException;
 
-    boolean verifyPaymentSignature(String razorpayOrderId, String razorpayPaymentId, String razorpaySignature);
+    boolean verifyPaymentSignature(String razorpayOrderId, String razorpayPaymentId, String razorpaySignature, String keySecret);
 }

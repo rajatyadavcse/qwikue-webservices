@@ -42,6 +42,8 @@ public class RestaurantValidationService {
         private String status;
         private List<RestaurantChargeDto> taxesAndCharges;
         private String razorpayLinkedAccountId;
+        private String razorpayKeyId;
+        private String razorpayKeySecret;
     }
 
     @Data
@@ -80,7 +82,7 @@ public class RestaurantValidationService {
         log.debug("Validating restaurantId={}", restaurantId);
         try {
             return restaurantServiceClient.get()
-                    .uri("/restaurants/{id}", restaurantId)
+                    .uri("/restaurants/internal/{id}", restaurantId)
                     .retrieve()
                     .body(RestaurantResponse.class);
         } catch (HttpClientErrorException.NotFound e) {
