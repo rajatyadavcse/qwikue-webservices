@@ -49,5 +49,13 @@ public class RestaurantDAO {
 
     @Column(name = "razorpay_linked_account_id", length = 50)
     private String razorpayLinkedAccountId;
+
+    @Column(name = "razorpay_key_id")
+    @Convert(converter = com.restaurant.service.util.AttributeCryptoConverter.class)
+    private String razorpayKeyId;
+
+    @Column(name = "razorpay_key_secret")
+    @Convert(converter = com.restaurant.service.util.AttributeCryptoConverter.class)
+    private String razorpayKeySecret;
 }
 

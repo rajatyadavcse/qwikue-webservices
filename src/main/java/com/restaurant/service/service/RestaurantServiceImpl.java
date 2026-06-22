@@ -62,6 +62,8 @@ public class RestaurantServiceImpl implements IRestaurantService {
         existingRestaurantDAO.setEstablishmentType(restaurantDetails.getEstablishmentType());
         existingRestaurantDAO.setOrderEntityTypes(restaurantDetails.getOrderEntityTypes());
         existingRestaurantDAO.setTaxesAndCharges(restaurantDetails.getTaxesAndCharges());
+        existingRestaurantDAO.setRazorpayKeyId(restaurantDetails.getRazorpayKeyId());
+        existingRestaurantDAO.setRazorpayKeySecret(restaurantDetails.getRazorpayKeySecret());
         existingRestaurantDAO.setUpdatedDate(new Date());
 
         return mapper.restaurantDAOToRestaurant(restaurantRepository.save(existingRestaurantDAO));

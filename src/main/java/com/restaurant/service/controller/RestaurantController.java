@@ -21,22 +21,43 @@ public class RestaurantController {
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Restaurant> createRestaurant(@RequestBody Restaurant restaurant) {
-        return new ResponseEntity<>(restaurantService.createRestaurant(restaurant), HttpStatus.CREATED);
+        Restaurant created = restaurantService.createRestaurant(restaurant);
+        if (created != null) {
+            created.setRazorpayKeySecret(null);
+        }
+        return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Restaurant>> getAllRestaurants() {
-        return new ResponseEntity<>(restaurantService.getAllRestaurants(), HttpStatus.OK);
+        List<Restaurant> list = restaurantService.getAllRestaurants();
+        if (list != null) {
+            list.forEach(r -> r.setRazorpayKeySecret(null));
+        }
+        return new ResponseEntity<>(list, HttpStatus.OK);
     }
 
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Restaurant> getRestaurantById(@PathVariable Long id) {
+        Restaurant restaurant = restaurantService.getRestaurantById(id);
+        if (restaurant != null) {
+            restaurant.setRazorpayKeySecret(null);
+        }
+        return new ResponseEntity<>(restaurant, HttpStatus.OK);
+    }
+
+    @GetMapping(value = "/internal/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Restaurant> getInternalRestaurantById(@PathVariable Long id) {
         return new ResponseEntity<>(restaurantService.getRestaurantById(id), HttpStatus.OK);
     }
 
     @PutMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Restaurant> updateRestaurant(@PathVariable Long id, @RequestBody Restaurant restaurant) {
-        return new ResponseEntity<>(restaurantService.updateRestaurant(id, restaurant), HttpStatus.OK);
+        Restaurant updated = restaurantService.updateRestaurant(id, restaurant);
+        if (updated != null) {
+            updated.setRazorpayKeySecret(null);
+        }
+        return new ResponseEntity<>(updated, HttpStatus.OK);
     }
 
     @DeleteMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)

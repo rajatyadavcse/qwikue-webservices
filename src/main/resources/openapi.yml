@@ -668,6 +668,14 @@ components:
               - TABLE
               - ROOM
               - BED
+        razorpayKeyId:
+          type: string
+          description: The Razorpay Merchant Key ID
+          example: "rzp_test_123456"
+        razorpayKeySecret:
+          type: string
+          description: The Razorpay Merchant Key Secret
+          example: "abcdef123456"
 
     RestaurantRequest:
       type: object
@@ -719,6 +727,15 @@ components:
               - TABLE
               - ROOM
               - BED
+        razorpayKeyId:
+          type: string
+          description: The Razorpay Merchant Key ID
+          example: "rzp_test_123456"
+        razorpayKeySecret:
+          type: string
+          description: The Razorpay Merchant Key Secret
+          example: "abcdef123456"
+
 
     # ---- Menu Schemas ----
     Menu:
