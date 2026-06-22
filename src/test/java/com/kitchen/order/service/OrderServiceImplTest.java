@@ -115,6 +115,7 @@ public class OrderServiceImplTest {
             mockResponse.setSubTotal(dao.getSubTotal());
             mockResponse.setTaxAmount(dao.getTaxAmount());
             mockResponse.setServiceChargeAmount(dao.getServiceChargeAmount());
+            mockResponse.setDiscountAmount(dao.getDiscountAmount());
             mockResponse.setTotalAmount(dao.getTotalAmount());
             mockResponse.setTaxesAndCharges(dao.getTaxesAndCharges());
             mockResponse.setOrderEntityType(dao.getOrderEntityType());
@@ -262,6 +263,110 @@ public class OrderServiceImplTest {
         assertEquals("pay_payment123", response.getRazorpayPaymentId());
 
         verify(tokenCounterRepository, times(1)).getNextTokenNo(eq(1L), any(LocalDate.class));
+        verify(eventPublisher, times(1)).publishEvent(any());
+    }
+
+    @Test
+    public void testCreateOrderCalculatesDiscountsCorrectly() {
+        // Arrange
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setRestaurantId(1L);
+        request.setEntityNo("10");
+        request.setNotes("With discounts");
+        request.setPaymentMode(PaymentMode.CASH);
+
+        OrderItemRequest itemRequest = new OrderItemRequest();
+        itemRequest.setMenuId(101L);
+        itemRequest.setQuantity(2);
+        request.setItems(Collections.singletonList(itemRequest));
+
+        // Mock Restaurant details with dynamic charges (CGST 2.5%, Flat Discount 15.00, 10% Discount)
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        restaurant.setRestaurantName("Tasty Restaurant");
+        restaurant.setStatus("ACTIVE");
+
+        List<RestaurantChargeDto> charges = new ArrayList<>();
+        charges.add(new RestaurantChargeDto("CGST", "PERCENTAGE", new BigDecimal("2.5"), "TAX"));
+        charges.add(new RestaurantChargeDto("Flat Discount", "FIXED", new BigDecimal("15.00"), "DISCOUNT"));
+        charges.add(new RestaurantChargeDto("Seasonal Discount", "PERCENTAGE", new BigDecimal("10.0"), "DISCOUNT"));
+        restaurant.setTaxesAndCharges(charges);
+
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        // Mock Entity validation
+        RestaurantValidationService.EntityResponse entity = new RestaurantValidationService.EntityResponse();
+        entity.setEntityNo("10");
+        entity.setRestaurantId(1L);
+        entity.setStatus("ACTIVE");
+        entity.setOrderEntityType("DINE_IN");
+        when(validationService.validateEntity("10", 1L)).thenReturn(entity);
+
+        // Mock Menu price fetching: unit price of $50.00
+        RestaurantValidationService.MenuResponse menu = new RestaurantValidationService.MenuResponse();
+        menu.setMenuId(101L);
+        menu.setItemName("Pizza");
+        menu.setPrice(new BigDecimal("50.00"));
+        menu.setIsAvailable(true);
+        when(validationService.validateMenuAndGetPrice(101L)).thenReturn(menu);
+
+        // Mock token counter repository getNextTokenNo
+        when(tokenCounterRepository.getNextTokenNo(eq(1L), any(LocalDate.class))).thenReturn(5);
+
+        // Mock orderRepository save
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO order = invocation.getArgument(0);
+            order.setOrderId(123L);
+            return order;
+        });
+
+        // Mock mapper mapping
+        OrderResponse mockResponse = new OrderResponse();
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            mockResponse.setOrderId(dao.getOrderId());
+            mockResponse.setSubTotal(dao.getSubTotal());
+            mockResponse.setTaxAmount(dao.getTaxAmount());
+            mockResponse.setServiceChargeAmount(dao.getServiceChargeAmount());
+            mockResponse.setDiscountAmount(dao.getDiscountAmount());
+            mockResponse.setTotalAmount(dao.getTotalAmount());
+            mockResponse.setTaxesAndCharges(dao.getTaxesAndCharges());
+            mockResponse.setOrderEntityType(dao.getOrderEntityType());
+            mockResponse.setTokenNo(dao.getTokenNo());
+            mockResponse.setStatus(dao.getStatus());
+            mockResponse.setPaymentMode(dao.getPaymentMode());
+            return mockResponse;
+        });
+
+        // Act
+        OrderResponse response = orderService.createOrder(request);
+
+        // Assert
+        // subTotal = 2 * 50.00 = 100.00
+        assertEquals(new BigDecimal("100.00"), response.getSubTotal());
+
+        // CGST = 100.00 * 2.5% = 2.50
+        assertEquals(new BigDecimal("2.50"), response.getTaxAmount());
+        assertEquals(BigDecimal.ZERO, response.getServiceChargeAmount());
+
+        // Discounts:
+        // Flat Discount = 15.00
+        // Seasonal Discount = 100.00 * 10% = 10.00
+        // Total Discount = 25.00
+        assertEquals(new BigDecimal("25.00"), response.getDiscountAmount());
+
+        // Total payable amount = 100.00 (subtotal) + 2.50 (tax) - 25.00 (discount) = 77.50
+        assertEquals(new BigDecimal("77.50"), response.getTotalAmount());
+
+        // Snapshot details count check
+        assertEquals(3, response.getTaxesAndCharges().size());
+        assertEquals("Flat Discount", response.getTaxesAndCharges().get(1).getName());
+        assertEquals("DISCOUNT", response.getTaxesAndCharges().get(1).getCategory());
+        assertEquals(new BigDecimal("15.00"), response.getTaxesAndCharges().get(1).getCalculatedAmount());
+        assertEquals("Seasonal Discount", response.getTaxesAndCharges().get(2).getName());
+        assertEquals("DISCOUNT", response.getTaxesAndCharges().get(2).getCategory());
+        assertEquals(new BigDecimal("10.00"), response.getTaxesAndCharges().get(2).getCalculatedAmount());
+
         verify(eventPublisher, times(1)).publishEvent(any());
     }
 }

@@ -19,4 +19,5 @@ public class OrderAppliedCharge implements Serializable {
     private String type;               // "PERCENTAGE" or "FIXED"
     private BigDecimal appliedRate;    // e.g. 2.50
     private BigDecimal calculatedAmount; // calculated dollar amount
+    private String category;             // "TAX", "SERVICE_CHARGE", or "DISCOUNT"
 }

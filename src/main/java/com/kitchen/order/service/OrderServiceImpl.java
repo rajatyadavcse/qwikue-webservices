@@ -125,9 +125,10 @@ public class OrderServiceImpl implements IOrderService {
 
         order.setSubTotal(subTotal);
 
-        // Calculate dynamic taxes and service charges
+        // Calculate dynamic taxes, service charges, and discounts
         BigDecimal taxAmount = BigDecimal.ZERO;
         BigDecimal serviceChargeAmount = BigDecimal.ZERO;
+        BigDecimal discountAmount = BigDecimal.ZERO;
         List<OrderAppliedCharge> appliedCharges = new ArrayList<>();
 
         if (restaurant.getTaxesAndCharges() != null) {
@@ -143,6 +144,8 @@ public class OrderServiceImpl implements IOrderService {
                     taxAmount = taxAmount.add(amount);
                 } else if ("SERVICE_CHARGE".equalsIgnoreCase(charge.getCategory())) {
                     serviceChargeAmount = serviceChargeAmount.add(amount);
+                } else if ("DISCOUNT".equalsIgnoreCase(charge.getCategory())) {
+                    discountAmount = discountAmount.add(amount);
                 }
 
                 OrderAppliedCharge applied = new OrderAppliedCharge();
@@ -150,14 +153,21 @@ public class OrderServiceImpl implements IOrderService {
                 applied.setType(charge.getType());
                 applied.setAppliedRate(charge.getValue());
                 applied.setCalculatedAmount(amount);
+                applied.setCategory(charge.getCategory());
                 appliedCharges.add(applied);
             }
         }
 
         order.setTaxAmount(taxAmount);
         order.setServiceChargeAmount(serviceChargeAmount);
+        order.setDiscountAmount(discountAmount);
         order.setTaxesAndCharges(appliedCharges);
-        order.setTotalAmount(subTotal.add(taxAmount).add(serviceChargeAmount));
+
+        BigDecimal totalPayable = subTotal.add(taxAmount).add(serviceChargeAmount).subtract(discountAmount);
+        if (totalPayable.compareTo(BigDecimal.ZERO) < 0) {
+            totalPayable = BigDecimal.ZERO;
+        }
+        order.setTotalAmount(totalPayable);
 
         if (order.getPaymentMode() == PaymentMode.CASH) {
             // Generate daily token number for the restaurant (Asia/Kolkata timezone matching jackson timezone)

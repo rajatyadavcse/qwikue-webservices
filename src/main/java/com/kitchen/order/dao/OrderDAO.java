@@ -56,6 +56,9 @@ public class OrderDAO {
     @Column(name = "service_charge_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal serviceChargeAmount = BigDecimal.ZERO;
 
+    @Column(name = "discount_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
 

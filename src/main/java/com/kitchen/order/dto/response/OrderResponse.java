@@ -22,6 +22,7 @@ public class OrderResponse {
     private BigDecimal subTotal;
     private BigDecimal taxAmount;
     private BigDecimal serviceChargeAmount;
+    private BigDecimal discountAmount;
     private BigDecimal totalAmount;
     private List<OrderAppliedCharge> taxesAndCharges;
     private String notes;
