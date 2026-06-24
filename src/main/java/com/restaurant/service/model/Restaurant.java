@@ -3,6 +3,7 @@ package com.restaurant.service.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -22,7 +23,10 @@ public class Restaurant implements Serializable {
 
     private String restaurantName;
 
-    private String addressName;
+    @Pattern(regexp = "^[a-zA-Z0-9]{15}$", message = "GSTIN must be exactly 15 alphanumeric characters")
+    private String gstin;
+
+    private Address address;
 
     private String phoneNo;
 

@@ -48,7 +48,15 @@ paths:
               $ref: '#/components/schemas/RestaurantRequest'
             example:
               restaurantName: "The Grand Kitchen"
-              addressName: "123 Main Street, New York, NY 10001"
+              gstin: "07AAAAA1111A1Z1"
+              address:
+                addressLine1: "123 Main Street"
+                addressLine2: "Suite 100"
+                landmark: "Near Central Park"
+                city: "New York"
+                state: "NY"
+                country: "USA"
+                pincode: "10001"
               phoneNo: "+1-555-123-4567"
               status: "ACTIVE"
               email: "info@grandkitchen.com"
@@ -161,7 +169,15 @@ paths:
               $ref: '#/components/schemas/RestaurantRequest'
             example:
               restaurantName: "The Grand Kitchen (Updated)"
-              addressName: "456 Broadway, New York, NY 10002"
+              gstin: "07AAAAA1111A1Z1"
+              address:
+                addressLine1: "456 Broadway"
+                addressLine2: "Apt 2B"
+                landmark: "Times Square"
+                city: "New York"
+                state: "NY"
+                country: "USA"
+                pincode: "10002"
               phoneNo: "+1-555-987-6543"
               status: "ACTIVE"
               email: "updated@grandkitchen.com"
@@ -609,10 +625,12 @@ components:
           type: string
           description: Name of the restaurant
           example: "The Grand Kitchen"
-        addressName:
+        gstin:
           type: string
-          description: Physical address of the restaurant
-          example: "123 Main Street, New York, NY 10001"
+          description: GSTIN (Goods and Services Tax Identification Number)
+          example: "07AAAAA1111A1Z1"
+        address:
+          $ref: '#/components/schemas/Address'
         phoneNo:
           type: string
           description: Contact phone number
@@ -682,16 +700,18 @@ components:
       description: Request body for creating or updating a restaurant
       required:
         - restaurantName
-        - addressName
+        - address
       properties:
         restaurantName:
           type: string
           description: Name of the restaurant
           example: "The Grand Kitchen"
-        addressName:
+        gstin:
           type: string
-          description: Physical address of the restaurant
-          example: "123 Main Street, New York, NY 10001"
+          description: GSTIN (Goods and Services Tax Identification Number)
+          example: "07AAAAA1111A1Z1"
+        address:
+          $ref: '#/components/schemas/Address'
         phoneNo:
           type: string
           description: Contact phone number
@@ -735,6 +755,45 @@ components:
           type: string
           description: The Razorpay Merchant Key Secret
           example: "abcdef123456"
+
+    Address:
+      type: object
+      description: Structured physical address details
+      required:
+        - addressLine1
+        - city
+        - state
+        - country
+        - pincode
+      properties:
+        addressLine1:
+          type: string
+          description: Address line 1 (e.g. street, building name)
+          example: "Flat 101, Building A"
+        addressLine2:
+          type: string
+          description: Address line 2 (e.g. locality, area)
+          example: "Sector 62"
+        landmark:
+          type: string
+          description: A nearby landmark
+          example: "Opposite Metro Station"
+        city:
+          type: string
+          description: City name
+          example: "Noida"
+        state:
+          type: string
+          description: State name
+          example: "Uttar Pradesh"
+        country:
+          type: string
+          description: Country name
+          example: "India"
+        pincode:
+          type: string
+          description: Postal pincode / zip code
+          example: "201301"
 
 
     # ---- Menu Schemas ----

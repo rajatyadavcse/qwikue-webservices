@@ -54,7 +54,8 @@ public class RestaurantServiceImpl implements IRestaurantService {
 
         // Update fields
         existingRestaurantDAO.setRestaurantName(restaurantDetails.getRestaurantName());
-        existingRestaurantDAO.setAddressName(restaurantDetails.getAddressName());
+        existingRestaurantDAO.setGstin(restaurantDetails.getGstin());
+        existingRestaurantDAO.setAddress(restaurantDetails.getAddress());
         existingRestaurantDAO.setPhoneNo(restaurantDetails.getPhoneNo());
         existingRestaurantDAO.setStatus(restaurantDetails.getStatus());
         existingRestaurantDAO.setEmail(restaurantDetails.getEmail());

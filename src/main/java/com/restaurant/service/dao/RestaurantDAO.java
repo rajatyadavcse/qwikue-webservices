@@ -1,5 +1,6 @@
 package com.restaurant.service.dao;
 
+import com.restaurant.service.model.Address;
 import com.restaurant.service.model.EstablishmentType;
 import com.restaurant.service.model.OrderEntityType;
 import com.restaurant.service.model.RestaurantCharge;
@@ -22,7 +23,11 @@ public class RestaurantDAO {
 
     private String restaurantName;
 
-    private String addressName;
+    @Column(name = "gstin", length = 15)
+    private String gstin;
+
+    @Embedded
+    private Address address;
 
     private String phoneNo;
 
