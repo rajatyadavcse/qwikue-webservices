@@ -15,9 +15,13 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
     /** Fetch all orders for a restaurant, paginated. */
     Page<OrderDAO> findByRestaurantId(Long restaurantId, Pageable pageable);
 
+    /** Fetch all orders for a restaurant excluding a specific status, paginated. */
+    Page<OrderDAO> findByRestaurantIdAndStatusNot(Long restaurantId, OrderStatus status, Pageable pageable);
+
     /** Fetch orders for a restaurant filtered by status, paginated. */
     Page<OrderDAO> findByRestaurantIdAndStatus(Long restaurantId, OrderStatus status, Pageable pageable);
 
     /** Fetch active kitchen orders (non-terminal statuses) for a specific restaurant. */
     List<OrderDAO> findByRestaurantIdAndStatusIn(Long restaurantId, List<OrderStatus> statuses);
 }
+

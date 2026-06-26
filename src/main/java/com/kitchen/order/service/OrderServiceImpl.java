@@ -234,9 +234,19 @@ public class OrderServiceImpl implements IOrderService {
         Page<OrderDAO> page;
 
         if (status != null) {
+            if (status == OrderStatus.PAYMENT_PENDING) {
+                // If they specifically ask for PAYMENT_PENDING, return an empty page
+                return new PagedResponse<>(
+                        List.of(),
+                        pageable.getPageNumber(),
+                        pageable.getPageSize(),
+                        0L,
+                        0,
+                        true);
+            }
             page = orderRepository.findByRestaurantIdAndStatus(restaurantId, status, pageable);
         } else {
-            page = orderRepository.findByRestaurantId(restaurantId, pageable);
+            page = orderRepository.findByRestaurantIdAndStatusNot(restaurantId, OrderStatus.PAYMENT_PENDING, pageable);
         }
 
         List<OrderResponse> content = orderMapper.orderDAOListToResponseList(page.getContent());
@@ -249,6 +259,7 @@ public class OrderServiceImpl implements IOrderService {
                 page.getTotalPages(),
                 page.isLast());
     }
+
 
     @Override
     @Transactional(readOnly = true)
