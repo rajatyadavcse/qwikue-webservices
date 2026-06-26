@@ -54,4 +54,10 @@ public interface IOrderService {
      * Completes payment for an order, updates payment status, and sets the transaction reference.
      */
     OrderResponse completePayment(Long orderId, String razorpayPaymentId);
+
+    /**
+     * Marks payment as failed for an order, updates payment status, and sets the failure reason.
+     */
+    OrderResponse failPayment(Long orderId, String errorMessage);
 }
+

@@ -1,6 +1,7 @@
 package com.kitchen.order.controller;
 
 import com.kitchen.order.dto.request.PaymentVerificationRequest;
+import com.kitchen.order.dto.request.PaymentFailureRequest;
 import com.kitchen.order.dto.response.OrderResponse;
 import com.kitchen.order.service.IPaymentService;
 import com.kitchen.order.service.IOrderService;
@@ -73,4 +74,27 @@ public class PaymentController {
         return ResponseEntity.ok(updatedOrder);
     }
 
+    @Operation(
+            summary = "Mark online payment as failed",
+            description = "Marks payment status as FAILED and order status as CANCELLED when checkout fails or is dismissed."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Payment marked as failed and order status updated successfully"),
+            @ApiResponse(responseCode = "404", description = "Order not found")
+    })
+    @PostMapping(value = "/fail", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<OrderResponse> failPayment(@Valid @RequestBody PaymentFailureRequest request) {
+        log.info("Received payment failure request for orderId={}", request.getOrderId());
+        
+        OrderResponse order = orderService.getOrderById(request.getOrderId());
+        if (order == null) {
+            log.warn("Order not found for orderId={}", request.getOrderId());
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        OrderResponse updatedOrder = orderService.failPayment(request.getOrderId(), request.getErrorMessage());
+        return ResponseEntity.ok(updatedOrder);
+    }
+
 }
+

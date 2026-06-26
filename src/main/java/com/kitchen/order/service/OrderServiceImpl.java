@@ -388,6 +388,28 @@ public class OrderServiceImpl implements IOrderService {
         return response;
     }
 
+    @Override
+    public OrderResponse failPayment(Long orderId, String errorMessage) {
+        log.info("Marking payment as FAILED for orderId={}, reason={}", orderId, errorMessage);
+        OrderDAO order = findOrderById(orderId);
+
+        order.setPaymentStatus(PaymentStatus.FAILED);
+        if (errorMessage != null && !errorMessage.isBlank()) {
+            order.setReason(errorMessage);
+        }
+
+        // Auto-transition status to CANCELLED if it is in PAYMENT_PENDING state
+        if (order.getStatus() == OrderStatus.PAYMENT_PENDING) {
+            order.setStatus(OrderStatus.CANCELLED);
+        }
+
+        OrderDAO saved = orderRepository.save(order);
+        OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
+        eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
+        return response;
+    }
+
+
     // ── Private helpers ────────────────────────────────────────────────────────
 
     private OrderDAO findOrderById(Long orderId) {
