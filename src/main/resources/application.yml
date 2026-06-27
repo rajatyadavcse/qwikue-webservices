@@ -40,13 +40,8 @@ info:
     description: RESTful API for managing orders in the kitchen-ordering system
     version: 1.0.0
 
-razorpay:
-  key-id: ${RAZORPAY_KEY_ID:rzp_test_mockKeyId}
-  key-secret: ${RAZORPAY_KEY_SECRET:mockKeySecret}
-  platform-commission-percentage: ${RAZORPAY_COMMISSION_PERCENTAGE:10.0}
-
 app:
   payment-sweeper:
-    enabled: true
+    enabled: false
     cron: "0 */10 * * * *"
     stale-minutes: 15

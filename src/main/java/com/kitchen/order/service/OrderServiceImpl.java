@@ -18,6 +18,8 @@ import com.kitchen.order.exception.ResourceNotFoundException;
 import com.kitchen.order.exception.ExternalServiceException;
 import com.kitchen.order.mapper.OrderItemMapper;
 import com.kitchen.order.mapper.OrderMapper;
+import com.kitchen.order.dao.CustomerDAO;
+import com.kitchen.order.repository.CustomerRepository;
 import com.kitchen.order.repository.OrderItemRepository;
 import com.kitchen.order.repository.OrderRepository;
 import com.kitchen.order.repository.RestaurantTokenCounterRepository;
@@ -48,6 +50,9 @@ public class OrderServiceImpl implements IOrderService {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private CustomerRepository customerRepository;
 
     @Autowired
     private RestaurantTokenCounterRepository tokenCounterRepository;
@@ -82,10 +87,36 @@ public class OrderServiceImpl implements IOrderService {
         // 2. Validate entity belongs to restaurant
         RestaurantValidationService.EntityResponse entity = validationService.validateEntity(request.getEntityNo(), request.getRestaurantId());
 
-        // 3. Build the order entity
+        // 3. Resolve/Create Customer details
+        CustomerDAO customer;
+        String phone = request.getPhone();
+        if (phone != null && !phone.trim().isEmpty()) {
+            customer = customerRepository.findByPhone(phone.trim())
+                    .map(existingCustomer -> {
+                        if (!existingCustomer.getCustomerName().equals(request.getCustomerName())) {
+                            existingCustomer.setCustomerName(request.getCustomerName());
+                            return customerRepository.save(existingCustomer);
+                        }
+                        return existingCustomer;
+                    })
+                    .orElseGet(() -> {
+                        CustomerDAO newCustomer = new CustomerDAO();
+                        newCustomer.setCustomerName(request.getCustomerName());
+                        newCustomer.setPhone(phone.trim());
+                        return customerRepository.save(newCustomer);
+                    });
+        } else {
+            CustomerDAO newCustomer = new CustomerDAO();
+            newCustomer.setCustomerName(request.getCustomerName());
+            newCustomer.setPhone(null);
+            customer = customerRepository.save(newCustomer);
+        }
+
+        // 4. Build the order entity
         OrderDAO order = new OrderDAO();
         order.setRestaurantId(request.getRestaurantId());
         order.setEntityNo(request.getEntityNo());
+        order.setCustomer(customer);
         if (entity != null) {
             order.setOrderEntityType(entity.getOrderEntityType());
         }

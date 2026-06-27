@@ -18,6 +18,11 @@ public class CreateOrderRequest {
     @NotBlank(message = "entityNo is required")
     private String entityNo;
 
+    @NotBlank(message = "customerName is required")
+    private String customerName;
+
+    private String phone;
+
     /** Optional customer notes (e.g. "no onions, extra spice") */
     private String notes;
 

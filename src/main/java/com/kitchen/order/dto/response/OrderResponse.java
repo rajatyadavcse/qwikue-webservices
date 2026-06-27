@@ -35,6 +35,7 @@ public class OrderResponse {
     private LocalDateTime completedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private CustomerResponse customer;
     private List<OrderItemResponse> items;
     private PaymentMode paymentMode;
     private PaymentStatus paymentStatus;
