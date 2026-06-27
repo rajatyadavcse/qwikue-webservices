@@ -330,6 +330,9 @@ public class OrderServiceImpl implements IOrderService {
             order.setActualReadyAt(LocalDateTime.now());
         } else if (newStatus == OrderStatus.COMPLETED) {
             order.setCompletedAt(LocalDateTime.now());
+            if (order.getPaymentMode() == PaymentMode.CASH) {
+                order.setPaymentStatus(PaymentStatus.COMPLETED);
+            }
         }
 
         if (newStatus == OrderStatus.PENDING && order.getTokenNo() == null) {

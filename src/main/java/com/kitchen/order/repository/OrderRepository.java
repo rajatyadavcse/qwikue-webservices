@@ -7,6 +7,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import com.kitchen.order.enums.PaymentMode;
+import com.kitchen.order.enums.PaymentStatus;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -23,5 +26,10 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
 
     /** Fetch active kitchen orders (non-terminal statuses) for a specific restaurant. */
     List<OrderDAO> findByRestaurantIdAndStatusIn(Long restaurantId, List<OrderStatus> statuses);
+
+    /** Fetch online orders that are pending payment and created before the threshold time. */
+    List<OrderDAO> findByPaymentModeAndPaymentStatusAndCreatedAtBefore(
+            PaymentMode paymentMode, PaymentStatus paymentStatus, LocalDateTime threshold);
 }
+
 

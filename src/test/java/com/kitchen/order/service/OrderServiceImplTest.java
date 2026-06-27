@@ -369,4 +369,40 @@ public class OrderServiceImplTest {
 
         verify(eventPublisher, times(1)).publishEvent(any());
     }
+
+    @Test
+    public void testUpdateOrderStatusToCompletedForCashOrderSetsPaymentCompleted() {
+        // Arrange
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(123L);
+        order.setRestaurantId(1L);
+        order.setPaymentMode(PaymentMode.CASH);
+        order.setStatus(OrderStatus.READY);
+        order.setPaymentStatus(PaymentStatus.PENDING);
+
+        when(orderRepository.findById(123L)).thenReturn(java.util.Optional.of(order));
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        OrderResponse mockResponse = new OrderResponse();
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            mockResponse.setOrderId(dao.getOrderId());
+            mockResponse.setPaymentMode(dao.getPaymentMode());
+            mockResponse.setStatus(dao.getStatus());
+            mockResponse.setPaymentStatus(dao.getPaymentStatus());
+            return mockResponse;
+        });
+
+        com.kitchen.order.dto.request.UpdateOrderStatusRequest request = new com.kitchen.order.dto.request.UpdateOrderStatusRequest();
+        request.setStatus(OrderStatus.COMPLETED);
+
+        // Act
+        OrderResponse response = orderService.updateOrderStatus(123L, request);
+
+        // Assert
+        assertEquals(OrderStatus.COMPLETED, response.getStatus());
+        assertEquals(PaymentStatus.COMPLETED, response.getPaymentStatus());
+        verify(eventPublisher, times(1)).publishEvent(any());
+    }
 }
+

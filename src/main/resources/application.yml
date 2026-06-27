@@ -44,3 +44,9 @@ razorpay:
   key-id: ${RAZORPAY_KEY_ID:rzp_test_mockKeyId}
   key-secret: ${RAZORPAY_KEY_SECRET:mockKeySecret}
   platform-commission-percentage: ${RAZORPAY_COMMISSION_PERCENTAGE:10.0}
+
+app:
+  payment-sweeper:
+    enabled: true
+    cron: "0 */10 * * * *"
+    stale-minutes: 15
