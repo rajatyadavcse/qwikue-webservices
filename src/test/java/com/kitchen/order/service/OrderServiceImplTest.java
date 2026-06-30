@@ -8,6 +8,7 @@ import com.kitchen.order.dto.response.RestaurantChargeDto;
 import com.kitchen.order.enums.OrderStatus;
 import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
+import com.kitchen.order.enums.OrderedBy;
 import com.kitchen.order.mapper.OrderMapper;
 import com.kitchen.order.dao.CustomerDAO;
 import com.kitchen.order.repository.CustomerRepository;
@@ -656,6 +657,67 @@ public class OrderServiceImplTest {
         // Assert
         verifyNoInteractions(orderRepository);
         assertEquals(0, response.getContent().size());
+    }
+
+    @Test
+    public void testCreateOrderSavesAndReturnsOrderedBy() {
+        // Arrange
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setRestaurantId(1L);
+        request.setEntityNo("10");
+        request.setNotes("Ordered by ADMIN test");
+        request.setPaymentMode(PaymentMode.CASH);
+        request.setCustomerName("Jane Doe");
+        request.setPhone("9876543211");
+        request.setOrderedBy(OrderedBy.ADMIN);
+
+        OrderItemRequest itemRequest = new OrderItemRequest();
+        itemRequest.setMenuId(101L);
+        itemRequest.setQuantity(1);
+        request.setItems(Collections.singletonList(itemRequest));
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        restaurant.setStatus("ACTIVE");
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        RestaurantValidationService.EntityResponse entity = new RestaurantValidationService.EntityResponse();
+        entity.setEntityNo("10");
+        when(validationService.validateEntity("10", 1L)).thenReturn(entity);
+
+        CustomerDAO customer = new CustomerDAO();
+        customer.setCustomerName("Jane Doe");
+        customer.setPhone("9876543211");
+        when(customerRepository.findByPhone("9876543211")).thenReturn(Optional.of(customer));
+
+        RestaurantValidationService.MenuResponse menu = new RestaurantValidationService.MenuResponse();
+        menu.setMenuId(101L);
+        menu.setPrice(new BigDecimal("10.0"));
+        menu.setItemName("Mock Burger");
+        when(validationService.validateMenuAndGetPrice(101L)).thenReturn(menu);
+
+        when(tokenCounterRepository.getNextTokenNo(eq(1L), any(LocalDate.class))).thenReturn(1);
+
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO order = invocation.getArgument(0);
+            order.setOrderId(789L);
+            return order;
+        });
+
+        OrderResponse mockResponse = new OrderResponse();
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            mockResponse.setOrderId(dao.getOrderId());
+            mockResponse.setOrderedBy(dao.getOrderedBy());
+            return mockResponse;
+        });
+
+        // Act
+        OrderResponse response = orderService.createOrder(request);
+
+        // Assert
+        assertEquals(OrderedBy.ADMIN, response.getOrderedBy());
+        verify(orderRepository).save(argThat(order -> order.getOrderedBy() == OrderedBy.ADMIN));
     }
 }
 

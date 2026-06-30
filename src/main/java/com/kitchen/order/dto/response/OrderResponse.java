@@ -3,6 +3,7 @@ package com.kitchen.order.dto.response;
 import com.kitchen.order.enums.OrderStatus;
 import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
+import com.kitchen.order.enums.OrderedBy;
 
 import lombok.Data;
 
@@ -39,6 +40,7 @@ public class OrderResponse {
     private List<OrderItemResponse> items;
     private PaymentMode paymentMode;
     private PaymentStatus paymentStatus;
+    private OrderedBy orderedBy;
     private String razorpayOrderId;
     private String razorpayPaymentId;
     private String razorpayKeyId;

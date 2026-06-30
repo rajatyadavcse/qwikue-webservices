@@ -9,6 +9,7 @@ import lombok.Data;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import com.kitchen.order.enums.OrderedBy;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -98,6 +99,10 @@ public class OrderDAO {
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false, length = 20)
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ordered_by", nullable = false, length = 20, columnDefinition = "varchar(20) default 'CUSTOMER'")
+    private OrderedBy orderedBy = OrderedBy.CUSTOMER;
 
     @Column(name = "razorpay_order_id", length = 100)
     private String razorpayOrderId;

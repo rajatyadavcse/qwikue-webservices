@@ -1,6 +1,7 @@
 package com.kitchen.order.dto.request;
 
 import com.kitchen.order.enums.PaymentMode;
+import com.kitchen.order.enums.OrderedBy;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -31,4 +32,6 @@ public class CreateOrderRequest {
     private List<OrderItemRequest> items;
 
     private PaymentMode paymentMode = PaymentMode.CASH;
+
+    private OrderedBy orderedBy = OrderedBy.CUSTOMER;
 }

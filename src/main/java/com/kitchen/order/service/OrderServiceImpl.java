@@ -13,6 +13,7 @@ import com.kitchen.order.dto.response.RestaurantChargeDto;
 import com.kitchen.order.enums.OrderStatus;
 import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
+import com.kitchen.order.enums.OrderedBy;
 import com.kitchen.order.exception.InvalidStatusTransitionException;
 import com.kitchen.order.exception.ResourceNotFoundException;
 import com.kitchen.order.exception.ExternalServiceException;
@@ -124,6 +125,7 @@ public class OrderServiceImpl implements IOrderService {
         order.setNotes(request.getNotes());
         order.setPaymentMode(request.getPaymentMode() != null ? request.getPaymentMode() : PaymentMode.CASH);
         order.setPaymentStatus(PaymentStatus.PENDING);
+        order.setOrderedBy(request.getOrderedBy() != null ? request.getOrderedBy() : OrderedBy.CUSTOMER);
         if (order.getPaymentMode() == PaymentMode.CASH) {
             order.setStatus(OrderStatus.PENDING);
         } else {
