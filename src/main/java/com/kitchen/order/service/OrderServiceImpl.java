@@ -34,6 +34,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -261,23 +262,35 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     @Transactional(readOnly = true)
     public PagedResponse<OrderResponse> getOrdersByRestaurant(Long restaurantId, OrderStatus status,
-            Pageable pageable) {
+            LocalDate fromDate, LocalDate toDate, Pageable pageable) {
         Page<OrderDAO> page;
 
-        if (status != null) {
-            if (status == OrderStatus.PAYMENT_PENDING) {
-                // If they specifically ask for PAYMENT_PENDING, return an empty page
-                return new PagedResponse<>(
-                        List.of(),
-                        pageable.getPageNumber(),
-                        pageable.getPageSize(),
-                        0L,
-                        0,
-                        true);
+        if (status == OrderStatus.PAYMENT_PENDING) {
+            // If they specifically ask for PAYMENT_PENDING, return an empty page
+            return new PagedResponse<>(
+                    List.of(),
+                    pageable.getPageNumber(),
+                    pageable.getPageSize(),
+                    0L,
+                    0,
+                    true);
+        }
+
+        if (fromDate == null && toDate == null) {
+            if (status != null) {
+                page = orderRepository.findByRestaurantIdAndStatus(restaurantId, status, pageable);
+            } else {
+                page = orderRepository.findByRestaurantIdAndStatusNot(restaurantId, OrderStatus.PAYMENT_PENDING, pageable);
             }
-            page = orderRepository.findByRestaurantIdAndStatus(restaurantId, status, pageable);
         } else {
-            page = orderRepository.findByRestaurantIdAndStatusNot(restaurantId, OrderStatus.PAYMENT_PENDING, pageable);
+            LocalDateTime start = (fromDate != null) ? fromDate.atStartOfDay() : null;
+            LocalDateTime end = (toDate != null) ? toDate.plusDays(1).atStartOfDay() : null;
+
+            if (status != null) {
+                page = orderRepository.findByRestaurantIdAndStatusAndDateRange(restaurantId, status, start, end, pageable);
+            } else {
+                page = orderRepository.findByRestaurantIdAndStatusNotAndDateRange(restaurantId, OrderStatus.PAYMENT_PENDING, start, end, pageable);
+            }
         }
 
         List<OrderResponse> content = orderMapper.orderDAOListToResponseList(page.getContent());

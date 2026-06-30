@@ -23,7 +23,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.kitchen.order.service.OrderStreamService;
+import org.springframework.format.annotation.DateTimeFormat;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -73,7 +75,7 @@ public class OrderController {
 
     @Operation(
             summary = "List orders for a restaurant",
-            description = "Returns paginated orders for a restaurant. Optionally filter by status. " +
+            description = "Returns paginated orders for a restaurant. Optionally filter by status and date range (fromDate/toDate, inclusive, yyyy-MM-dd in Asia/Kolkata timezone). " +
                           "Default: page=0, size=20, sorted by createdAt descending."
     )
     @ApiResponses({
@@ -87,6 +89,12 @@ public class OrderController {
             @Parameter(description = "Filter by order status (optional)")
             @RequestParam(required = false) OrderStatus status,
 
+            @Parameter(description = "Filter from date (inclusive, yyyy-MM-dd, Asia/Kolkata)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+
+            @Parameter(description = "Filter to date (inclusive, yyyy-MM-dd, Asia/Kolkata)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+
             @Parameter(description = "Page number (0-indexed)")
             @RequestParam(defaultValue = "0") int page,
 
@@ -94,7 +102,7 @@ public class OrderController {
             @RequestParam(defaultValue = "20") int size) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return ResponseEntity.ok(orderService.getOrdersByRestaurant(restaurantId, status, pageable));
+        return ResponseEntity.ok(orderService.getOrdersByRestaurant(restaurantId, status, fromDate, toDate, pageable));
     }
 
     // ── PUT /orders/{id}/status ───────────────────────────────────────────────

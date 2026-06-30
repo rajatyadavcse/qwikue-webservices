@@ -7,6 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
 import java.time.LocalDateTime;
@@ -30,6 +32,30 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
     /** Fetch online orders that are pending payment and created before the threshold time. */
     List<OrderDAO> findByPaymentModeAndPaymentStatusAndCreatedAtBefore(
             PaymentMode paymentMode, PaymentStatus paymentStatus, LocalDateTime threshold);
+
+    /** Fetch orders for a restaurant filtered by status and date range (inclusive start, exclusive end). */
+    @Query("SELECT o FROM OrderDAO o WHERE o.restaurantId = :restaurantId " +
+           "AND o.status = :status " +
+           "AND (:start IS NULL OR o.createdAt >= :start) " +
+           "AND (:end IS NULL OR o.createdAt < :end)")
+    Page<OrderDAO> findByRestaurantIdAndStatusAndDateRange(
+            @Param("restaurantId") Long restaurantId,
+            @Param("status") OrderStatus status,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            Pageable pageable);
+
+    /** Fetch orders for a restaurant excluding a status, filtered by date range (inclusive start, exclusive end). */
+    @Query("SELECT o FROM OrderDAO o WHERE o.restaurantId = :restaurantId " +
+           "AND o.status <> :excludeStatus " +
+           "AND (:start IS NULL OR o.createdAt >= :start) " +
+           "AND (:end IS NULL OR o.createdAt < :end)")
+    Page<OrderDAO> findByRestaurantIdAndStatusNotAndDateRange(
+            @Param("restaurantId") Long restaurantId,
+            @Param("excludeStatus") OrderStatus excludeStatus,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            Pageable pageable);
 }
 
 

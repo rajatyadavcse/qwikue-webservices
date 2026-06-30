@@ -21,6 +21,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import java.time.LocalDateTime;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -544,6 +549,113 @@ public class OrderServiceImplTest {
         verify(customerRepository, times(1)).save(argThat(customer -> 
             customer.getCustomerName().equals("Alice") && customer.getPhone().equals("5556667777")
         ));
+    }
+
+    @Test
+    public void testGetOrdersByRestaurant_NoDateRange_WithStatus() {
+        // Arrange
+        Long restaurantId = 1L;
+        OrderStatus status = OrderStatus.PENDING;
+        Pageable pageable = PageRequest.of(0, 10);
+        
+        List<OrderDAO> orders = List.of(new OrderDAO());
+        Page<OrderDAO> page = new PageImpl<>(orders, pageable, 1);
+        
+        when(orderRepository.findByRestaurantIdAndStatus(restaurantId, status, pageable)).thenReturn(page);
+        when(orderMapper.orderDAOListToResponseList(any())).thenReturn(List.of(new OrderResponse()));
+        
+        // Act
+        var response = orderService.getOrdersByRestaurant(restaurantId, status, null, null, pageable);
+        
+        // Assert
+        verify(orderRepository, times(1)).findByRestaurantIdAndStatus(restaurantId, status, pageable);
+        assertEquals(1, response.getContent().size());
+    }
+
+    @Test
+    public void testGetOrdersByRestaurant_NoDateRange_NoStatus() {
+        // Arrange
+        Long restaurantId = 1L;
+        Pageable pageable = PageRequest.of(0, 10);
+        
+        List<OrderDAO> orders = List.of(new OrderDAO());
+        Page<OrderDAO> page = new PageImpl<>(orders, pageable, 1);
+        
+        when(orderRepository.findByRestaurantIdAndStatusNot(restaurantId, OrderStatus.PAYMENT_PENDING, pageable)).thenReturn(page);
+        when(orderMapper.orderDAOListToResponseList(any())).thenReturn(List.of(new OrderResponse()));
+        
+        // Act
+        var response = orderService.getOrdersByRestaurant(restaurantId, null, null, null, pageable);
+        
+        // Assert
+        verify(orderRepository, times(1)).findByRestaurantIdAndStatusNot(restaurantId, OrderStatus.PAYMENT_PENDING, pageable);
+        assertEquals(1, response.getContent().size());
+    }
+
+    @Test
+    public void testGetOrdersByRestaurant_WithDateRange_WithStatus() {
+        // Arrange
+        Long restaurantId = 1L;
+        OrderStatus status = OrderStatus.PENDING;
+        LocalDate from = LocalDate.of(2026, 6, 1);
+        LocalDate to = LocalDate.of(2026, 6, 30);
+        Pageable pageable = PageRequest.of(0, 10);
+        
+        List<OrderDAO> orders = List.of(new OrderDAO());
+        Page<OrderDAO> page = new PageImpl<>(orders, pageable, 1);
+        
+        LocalDateTime start = from.atStartOfDay();
+        LocalDateTime end = to.plusDays(1).atStartOfDay();
+        
+        when(orderRepository.findByRestaurantIdAndStatusAndDateRange(restaurantId, status, start, end, pageable)).thenReturn(page);
+        when(orderMapper.orderDAOListToResponseList(any())).thenReturn(List.of(new OrderResponse()));
+        
+        // Act
+        var response = orderService.getOrdersByRestaurant(restaurantId, status, from, to, pageable);
+        
+        // Assert
+        verify(orderRepository, times(1)).findByRestaurantIdAndStatusAndDateRange(restaurantId, status, start, end, pageable);
+        assertEquals(1, response.getContent().size());
+    }
+
+    @Test
+    public void testGetOrdersByRestaurant_WithDateRange_NoStatus() {
+        // Arrange
+        Long restaurantId = 1L;
+        LocalDate from = LocalDate.of(2026, 6, 1);
+        LocalDate to = LocalDate.of(2026, 6, 30);
+        Pageable pageable = PageRequest.of(0, 10);
+        
+        List<OrderDAO> orders = List.of(new OrderDAO());
+        Page<OrderDAO> page = new PageImpl<>(orders, pageable, 1);
+        
+        LocalDateTime start = from.atStartOfDay();
+        LocalDateTime end = to.plusDays(1).atStartOfDay();
+        
+        when(orderRepository.findByRestaurantIdAndStatusNotAndDateRange(restaurantId, OrderStatus.PAYMENT_PENDING, start, end, pageable)).thenReturn(page);
+        when(orderMapper.orderDAOListToResponseList(any())).thenReturn(List.of(new OrderResponse()));
+        
+        // Act
+        var response = orderService.getOrdersByRestaurant(restaurantId, null, from, to, pageable);
+        
+        // Assert
+        verify(orderRepository, times(1)).findByRestaurantIdAndStatusNotAndDateRange(restaurantId, OrderStatus.PAYMENT_PENDING, start, end, pageable);
+        assertEquals(1, response.getContent().size());
+    }
+
+    @Test
+    public void testGetOrdersByRestaurant_PaymentPendingStatusReturnsEmptyPage() {
+        // Arrange
+        Long restaurantId = 1L;
+        OrderStatus status = OrderStatus.PAYMENT_PENDING;
+        Pageable pageable = PageRequest.of(0, 10);
+        
+        // Act
+        var response = orderService.getOrdersByRestaurant(restaurantId, status, null, null, pageable);
+        
+        // Assert
+        verifyNoInteractions(orderRepository);
+        assertEquals(0, response.getContent().size());
     }
 }
 

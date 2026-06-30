@@ -8,6 +8,7 @@ import com.kitchen.order.dto.response.PagedResponse;
 import com.kitchen.order.enums.OrderStatus;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface IOrderService {
@@ -26,7 +27,7 @@ public interface IOrderService {
     /**
      * Lists all orders for a restaurant with optional status filter, paginated.
      */
-    PagedResponse<OrderResponse> getOrdersByRestaurant(Long restaurantId, OrderStatus status, Pageable pageable);
+    PagedResponse<OrderResponse> getOrdersByRestaurant(Long restaurantId, OrderStatus status, LocalDate fromDate, LocalDate toDate, Pageable pageable);
 
     /**
      * Updates the status of an order to any new status.
