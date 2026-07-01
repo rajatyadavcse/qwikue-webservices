@@ -36,8 +36,8 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
     /** Fetch orders for a restaurant filtered by status and date range (inclusive start, exclusive end). */
     @Query("SELECT o FROM OrderDAO o WHERE o.restaurantId = :restaurantId " +
            "AND o.status = :status " +
-           "AND (:start IS NULL OR o.createdAt >= :start) " +
-           "AND (:end IS NULL OR o.createdAt < :end)")
+           "AND (cast(:start as java.time.LocalDateTime) IS NULL OR o.createdAt >= :start) " +
+           "AND (cast(:end as java.time.LocalDateTime) IS NULL OR o.createdAt < :end)")
     Page<OrderDAO> findByRestaurantIdAndStatusAndDateRange(
             @Param("restaurantId") Long restaurantId,
             @Param("status") OrderStatus status,
@@ -48,8 +48,8 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
     /** Fetch orders for a restaurant excluding a status, filtered by date range (inclusive start, exclusive end). */
     @Query("SELECT o FROM OrderDAO o WHERE o.restaurantId = :restaurantId " +
            "AND o.status <> :excludeStatus " +
-           "AND (:start IS NULL OR o.createdAt >= :start) " +
-           "AND (:end IS NULL OR o.createdAt < :end)")
+           "AND (cast(:start as java.time.LocalDateTime) IS NULL OR o.createdAt >= :start) " +
+           "AND (cast(:end as java.time.LocalDateTime) IS NULL OR o.createdAt < :end)")
     Page<OrderDAO> findByRestaurantIdAndStatusNotAndDateRange(
             @Param("restaurantId") Long restaurantId,
             @Param("excludeStatus") OrderStatus excludeStatus,
