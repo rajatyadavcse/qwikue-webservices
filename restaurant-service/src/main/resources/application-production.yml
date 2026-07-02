@@ -1,0 +1,35 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres?sslmode=require&currentSchema=restaurant
+    username: postgres.iglezaprcevbzjldkutb
+    password: MLshZRv51jdYvLhF
+    hikari:
+      maximum-pool-size: 5       # cap DB connections — Supabase free tier allows ~10
+      minimum-idle: 2            # keep 2 warm connections idle
+      connection-timeout: 30000  # 30s wait before failing
+      idle-timeout: 600000       # release idle connections after 10 min
+      max-lifetime: 1800000      # recycle connections after 30 min
+
+# Open CORS to all origins on production (lock this down to your frontend domain if needed)
+cors:
+  allowed-origins: https://kitchen-frontend-customer.vercel.app,https://kitchen-frontend-admin.vercel.app,http://localhost:3001,http://localhost:3000,http://localhost:3002,https://kitchen-frontend-admin-git-dev-avanishparashars-projects.vercel.app,https://kitchen-frontend-customer-git-dev-avanishparashars-projects.vercel.app,https://kitchen-frontend-shell-git-dev-avanishparashars-projects.vercel.app,https://kitchen-frontend-shell.vercel.app
+
+springdoc:
+  swagger-ui:
+    enabled: true
+
+# ── Keep-Alive Scheduler (Render free-tier anti-sleep) ───────────────────────
+# Render's free tier spins down a service after 15 minutes of inactivity.
+# This cron job fires a lightweight DB query every 10 minutes so the JVM
+# process is never idle long enough for Render to put it to sleep.
+#
+# Cron format (Spring): second minute hour day-of-month month day-of-week
+#   "0 0/10 * * * *"  →  fires at 0s of every 10th minute, every hour, every day
+#
+# ⚠️  To change the interval, update the expression below.
+#     Keep it strictly BELOW 15 minutes (Render's sleep threshold).
+#     Recommended range: every 10–12 minutes.
+app:
+  keep-alive:
+    cron: "0 0/10 * * * *"

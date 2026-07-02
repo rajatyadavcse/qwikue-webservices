@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: restaurant-service
+  jackson:
+    time-zone: Asia/Kolkata
+  # Default to 'production' profile — no need to set anything on the deployment platform
+  profiles:
+    active: production
+  jpa:
+    open-in-view: false          # release Hibernate session after transaction, not after HTTP response
+    hibernate:
+      ddl-auto: validate         # safer than update; no schema-diff kept in memory at startup
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 20         # batch inserts/updates to reduce object graph overhead
+        order_inserts: true
+        order_updates: true
+
+server:
+  port: 8080
+  forward-headers-strategy: native  # trust X-Forwarded-* headers from Railway/Render/Heroku reverse proxies
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized  # don't expose full details to unauthenticated requests
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: Restaurant Service
+    description: RESTful API for managing restaurants and their menu items
+    version: 1.0.0
