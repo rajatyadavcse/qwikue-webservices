@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 import java.util.Date;
 
 @Entity
-@Table(name = "menu")
+@Table(name = "menu", schema = "restaurant")
 @Data
 public class MenuDAO {
     @Id

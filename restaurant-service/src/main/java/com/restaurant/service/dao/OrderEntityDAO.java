@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 import lombok.Data;
 
 @Entity
-@Table(name = "order_entity")
+@Table(name = "order_entity", schema = "restaurant")
 @Data
 public class OrderEntityDAO {
 

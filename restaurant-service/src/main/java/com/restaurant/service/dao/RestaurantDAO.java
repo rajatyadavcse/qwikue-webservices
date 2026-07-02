@@ -15,7 +15,7 @@ import java.util.Date;
 import java.util.List;
 
 @Entity
-@Table(name = "restaurant")
+@Table(name = "restaurant", schema = "restaurant")
 @Data
 public class RestaurantDAO {
     @Id

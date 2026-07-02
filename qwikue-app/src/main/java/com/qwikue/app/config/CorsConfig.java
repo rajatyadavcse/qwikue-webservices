@@ -1,4 +1,4 @@
-package com.kitchen.order.config;
+package com.qwikue.app.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

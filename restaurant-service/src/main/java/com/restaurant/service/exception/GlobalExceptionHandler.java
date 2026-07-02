@@ -8,7 +8,7 @@ import org.springframework.web.context.request.WebRequest;
 
 import java.time.LocalDateTime;
 
-@ControllerAdvice
+@ControllerAdvice(basePackages = "com.restaurant.service.controller", name = "restaurantGlobalExceptionHandler")
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)

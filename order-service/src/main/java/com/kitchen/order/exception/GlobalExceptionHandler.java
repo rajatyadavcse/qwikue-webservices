@@ -11,7 +11,7 @@ import org.springframework.web.context.request.WebRequest;
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
-@ControllerAdvice
+@ControllerAdvice(basePackages = "com.kitchen.order.controller", name = "orderGlobalExceptionHandler")
 public class GlobalExceptionHandler {
 
     // ── 404 Not Found ─────────────────────────────────────────────────────────

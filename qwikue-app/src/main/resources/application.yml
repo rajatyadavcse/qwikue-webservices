@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: qwikue-webservices
+  profiles:
+    active: production
+  jpa:
+    open-in-view: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+  jackson:
+    time-zone: Asia/Kolkata
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
+
+server:
+  port: ${PORT:8080}
+  forward-headers-strategy: native
+
+# Consolidated properties for components
+jwt:
+  secret: aWRlbnRpdHktc2VydmljZS1zZWNyZXQta2V5LTMyYnl0ZQ==
+  access-token-expiry-ms: 900000
+  refresh-token-expiry-ms: 604800000
+
+app:
+  otp:
+    expiry-minutes: 5
+    reset-expiry-minutes: 15
+  cookie:
+    secure: true
+    same-site: None
+  security:
+    public-urls: []
+  base-url: /
+  restaurant-service:
+    base-url: ${RESTAURANT_SERVICE_BASE_URL:http://localhost:8080}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+  api-docs:
+    path: /v3/api-docs

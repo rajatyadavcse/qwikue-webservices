@@ -16,6 +16,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
@@ -32,6 +33,9 @@ public class SecurityConfig {
 
     @Autowired
     private JwtFilter jwtFilter;
+
+    @Value("${app.security.public-urls:}")
+    private String[] dynamicPublicUrls;
 
     private static final String[] PUBLIC_URLS = {
             "/auth/login",
@@ -68,9 +72,17 @@ public class SecurityConfig {
         return http
                 .cors(withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(PUBLIC_URLS).permitAll()
-                        .anyRequest().authenticated())
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers(PUBLIC_URLS).permitAll();
+                    if (dynamicPublicUrls != null && dynamicPublicUrls.length > 0) {
+                        for (String url : dynamicPublicUrls) {
+                            if (url != null && !url.trim().isEmpty()) {
+                                auth.requestMatchers(url.trim()).permitAll();
+                            }
+                        }
+                    }
+                    auth.anyRequest().authenticated();
+                })
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())

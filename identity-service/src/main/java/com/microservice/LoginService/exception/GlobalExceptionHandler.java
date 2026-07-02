@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.HashMap;
 import java.util.Map;
 
-@RestControllerAdvice(basePackages = "com.microservice.LoginService.controller")
+@RestControllerAdvice(basePackages = "com.microservice.LoginService.controller", name = "identityGlobalExceptionHandler")
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApiException.class)

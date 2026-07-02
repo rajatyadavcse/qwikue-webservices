@@ -31,6 +31,15 @@ public class RestaurantValidationService {
     @Qualifier("restaurantServiceClient")
     private RestClient restaurantServiceClient;
 
+    @Autowired
+    private com.restaurant.service.service.IRestaurantService restaurantService;
+
+    @Autowired
+    private com.restaurant.service.service.IMenuService menuService;
+
+    @Autowired
+    private com.restaurant.service.service.IOrderEntityService orderEntityService;
+
     // ── Inner response models (mirrors restaurant-service response shapes) ────
 
     @Data
@@ -80,6 +89,7 @@ public class RestaurantValidationService {
      */
     public RestaurantResponse validateRestaurant(Long restaurantId) {
         log.debug("Validating restaurantId={}", restaurantId);
+        /*
         try {
             return restaurantServiceClient.get()
                     .uri("/restaurants/internal/{id}", restaurantId)
@@ -92,6 +102,35 @@ public class RestaurantValidationService {
             throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.",
                     e);
         }
+        */
+        try {
+            com.restaurant.service.model.Restaurant restaurant = restaurantService.getRestaurantById(restaurantId);
+            RestaurantResponse response = new RestaurantResponse();
+            response.setRestaurantId(restaurant.getRestaurantId());
+            response.setRestaurantName(restaurant.getRestaurantName());
+            response.setStatus(restaurant.getStatus());
+            if (restaurant.getTaxesAndCharges() != null) {
+                response.setTaxesAndCharges(restaurant.getTaxesAndCharges().stream()
+                        .map(charge -> {
+                            RestaurantChargeDto dto = new RestaurantChargeDto();
+                            dto.setName(charge.getName());
+                            dto.setType(charge.getType());
+                            dto.setValue(charge.getValue());
+                            dto.setCategory(charge.getCategory());
+                            return dto;
+                        })
+                        .collect(java.util.stream.Collectors.toList()));
+            }
+            response.setRazorpayLinkedAccountId(restaurant.getRazorpayLinkedAccountId());
+            response.setRazorpayKeyId(restaurant.getRazorpayKeyId());
+            response.setRazorpayKeySecret(restaurant.getRazorpayKeySecret());
+            return response;
+        } catch (com.restaurant.service.exception.ResourceNotFoundException e) {
+            throw new ResourceNotFoundException(e.getMessage());
+        } catch (Exception e) {
+            log.error("Direct call to restaurantService failed for restaurantId={}: {}", restaurantId, e.getMessage());
+            throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.", e);
+        }
     }
 
     /**
@@ -103,6 +142,7 @@ public class RestaurantValidationService {
      */
     public EntityResponse validateEntity(String entityNo, Long restaurantId) {
         log.debug("Validating entityNo={}, restaurantId={}", entityNo, restaurantId);
+        /*
         try {
             return restaurantServiceClient.get()
                     .uri("/entities/{entityNo}/restaurant/{restaurantId}", entityNo, restaurantId)
@@ -117,6 +157,21 @@ public class RestaurantValidationService {
             throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.",
                     e);
         }
+        */
+        try {
+            com.restaurant.service.model.OrderEntity entity = orderEntityService.getOrderEntityById(entityNo, restaurantId);
+            EntityResponse response = new EntityResponse();
+            response.setEntityNo(entity.getEntityNo());
+            response.setRestaurantId(entity.getRestaurantId());
+            response.setStatus(entity.getStatus());
+            response.setOrderEntityType(entity.getOrderEntityType() != null ? entity.getOrderEntityType().name() : null);
+            return response;
+        } catch (com.restaurant.service.exception.ResourceNotFoundException e) {
+            throw new ResourceNotFoundException(e.getMessage());
+        } catch (Exception e) {
+            log.error("Direct call to orderEntityService failed for entityNo={}, restaurantId={}: {}", entityNo, restaurantId, e.getMessage());
+            throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.", e);
+        }
     }
 
     /**
@@ -130,6 +185,7 @@ public class RestaurantValidationService {
      */
     public MenuResponse validateMenuAndGetPrice(Long menuId) {
         log.debug("Validating menuId={}", menuId);
+        /*
         try {
             MenuResponse menu = restaurantServiceClient.get()
                     .uri("/menu/{id}", menuId)
@@ -152,6 +208,31 @@ public class RestaurantValidationService {
             log.error("restaurant-service call failed for menuId={}: {}", menuId, e.getMessage());
             throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.",
                     e);
+        }
+        */
+        try {
+            com.restaurant.service.model.Menu menuEntity = menuService.getMenuById(menuId);
+            if (menuEntity == null) {
+                throw new ResourceNotFoundException("Menu item not found with id: " + menuId);
+            }
+            if (Boolean.FALSE.equals(menuEntity.getIsAvailable())) {
+                throw new IllegalArgumentException(
+                        "Menu item '" + menuEntity.getItemName() + "' (id: " + menuId + ") is currently unavailable");
+            }
+            MenuResponse response = new MenuResponse();
+            response.setMenuId(menuEntity.getMenuId());
+            response.setRestaurantId(menuEntity.getRestaurantId());
+            response.setItemName(menuEntity.getItemName());
+            response.setPrice(menuEntity.getPrice());
+            response.setIsAvailable(menuEntity.getIsAvailable());
+            return response;
+        } catch (com.restaurant.service.exception.ResourceNotFoundException e) {
+            throw new ResourceNotFoundException(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Direct call to menuService failed for menuId={}: {}", menuId, e.getMessage());
+            throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.", e);
         }
     }
 }
