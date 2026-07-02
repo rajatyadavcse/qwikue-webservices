@@ -1,0 +1,20 @@
+# Git history — not needed inside the image
+.git
+.gitignore
+.gitattributes
+
+# IDE and OS files
+.idea
+.DS_Store
+*.iml
+
+# Local build output — Docker builds its own inside the container
+target/
+
+# Source files that don't affect the build
+*.md
+HELP.md
+
+# Docker files themselves (no need to copy into the build context)
+Dockerfile
+.dockerignore
