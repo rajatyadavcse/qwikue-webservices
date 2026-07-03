@@ -77,7 +77,21 @@ public class SecurityConfig {
                     if (dynamicPublicUrls != null && dynamicPublicUrls.length > 0) {
                         for (String url : dynamicPublicUrls) {
                             if (url != null && !url.trim().isEmpty()) {
-                                auth.requestMatchers(url.trim()).permitAll();
+                                String trimmedUrl = url.trim();
+                                if (trimmedUrl.contains(":")) {
+                                    int colonIndex = trimmedUrl.indexOf(":");
+                                    String methodStr = trimmedUrl.substring(0, colonIndex).toUpperCase();
+                                    String pathPattern = trimmedUrl.substring(colonIndex + 1);
+                                    try {
+                                        org.springframework.http.HttpMethod method = org.springframework.http.HttpMethod.valueOf(methodStr);
+                                        auth.requestMatchers(method, pathPattern).permitAll();
+                                    } catch (IllegalArgumentException e) {
+                                        // Fallback if not a valid HTTP method
+                                        auth.requestMatchers(trimmedUrl).permitAll();
+                                    }
+                                } else {
+                                    auth.requestMatchers(trimmedUrl).permitAll();
+                                }
                             }
                         }
                     }

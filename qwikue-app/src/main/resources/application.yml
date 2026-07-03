@@ -48,7 +48,16 @@ app:
     secure: true
     same-site: None
   security:
-    public-urls: []
+    public-urls:
+      - "POST:/payments/verify"
+      - "POST:/payments/fail"
+      - "GET:/orders/{id}/stream"
+      - "GET:/orders/{id}"
+      - "GET:/orders/statuses"
+      - "POST:/orders"
+      - "GET:/restaurants/{id}"
+      - "GET:/menu/{id}"
+      - "GET:/menu"
   base-url: /
   restaurant-service:
     base-url: ${RESTAURANT_SERVICE_BASE_URL:http://localhost:8080}
