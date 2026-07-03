@@ -58,6 +58,7 @@ app:
       - "GET:/restaurants/{id}"
       - "GET:/menu/{id}"
       - "GET:/menu"
+      - "GET:/orders/restaurant/{restaurantId}/stream"
   base-url: /
   restaurant-service:
     base-url: ${RESTAURANT_SERVICE_BASE_URL:http://localhost:8080}

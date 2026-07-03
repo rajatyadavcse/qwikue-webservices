@@ -6,7 +6,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "order_items", schema = "order")
+@Table(name = "order_items", schema = "\"order\"")
 @Data
 public class OrderItemDAO {
 
