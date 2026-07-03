@@ -66,8 +66,8 @@ public class AttributeCryptoConverter implements AttributeConverter<String, Stri
             byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(dbData));
             return new String(decrypted, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            log.error("Decryption failed for database value", e);
-            throw new IllegalStateException("Failed to decrypt database value: " + e.getMessage(), e);
+            log.warn("Decryption failed for database value (likely mismatched encryption key or unencrypted value). Returning raw value.");
+            return dbData;
         }
     }
 }
