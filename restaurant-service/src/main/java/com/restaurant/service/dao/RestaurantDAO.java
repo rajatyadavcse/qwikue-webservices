@@ -1,6 +1,6 @@
 package com.restaurant.service.dao;
 
-import com.github.f4b6a3.tsid.TsidCreator;
+
 import com.restaurant.service.model.Address;
 import com.restaurant.service.model.EstablishmentType;
 import com.restaurant.service.model.OrderEntityType;
@@ -19,6 +19,7 @@ import java.util.List;
 @Data
 public class RestaurantDAO {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long restaurantId;
 
     private String restaurantName;
@@ -63,11 +64,6 @@ public class RestaurantDAO {
     @Convert(converter = com.restaurant.service.util.AttributeCryptoConverter.class)
     private String razorpayKeySecret;
 
-    @PrePersist
-    public void prePersist() {
-        if (this.restaurantId == null) {
-            this.restaurantId = TsidCreator.getTsid().toLong();
-        }
-    }
+
 }
 
