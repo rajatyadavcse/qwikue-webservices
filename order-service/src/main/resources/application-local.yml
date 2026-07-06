@@ -24,6 +24,8 @@ cors:
 app:
   restaurant-service:
     base-url: "http://localhost:8080"
+  payment-sweeper:
+    enabled: false
 
 springdoc:
   swagger-ui:

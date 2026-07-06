@@ -26,6 +26,8 @@ springdoc:
 app:
   restaurant-service:
     base-url:  # override via env var on platform
+  payment-sweeper:
+    enabled: false
   # ── Keep-Alive Scheduler (Render free-tier anti-sleep) ───────────────────────
   # Render's free tier spins down a service after 15 minutes of inactivity.
   # This cron job fires a lightweight DB query every 10 minutes so the JVM

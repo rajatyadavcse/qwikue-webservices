@@ -24,7 +24,7 @@ import java.util.List;
  * Periodically sweeps and resolves stale/unresolved payments on Razorpay.
  */
 @Component
-@ConditionalOnProperty(name = "app.payment-sweeper.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "app.payment-sweeper.enabled", havingValue = "true", matchIfMissing = false)
 public class PaymentSweeperScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentSweeperScheduler.class);
