@@ -108,4 +108,12 @@ public class EmailService {
                 """
                 .formatted(firstName, otp);
     }
+
+    /**
+     * Sends a contact us email notification to support.
+     */
+    public void sendContactUsEmail(String toEmail, String htmlBody) {
+        String subject = "New Enquiry Received – " + appName;
+        send(toEmail, subject, htmlBody);
+    }
 }

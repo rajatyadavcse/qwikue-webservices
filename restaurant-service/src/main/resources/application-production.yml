@@ -13,7 +13,7 @@ spring:
 
 # Open CORS to all origins on production (lock this down to your frontend domain if needed)
 cors:
-  allowed-origins: https://kitchen-frontend-customer.vercel.app,https://kitchen-frontend-admin.vercel.app,http://localhost:3001,http://localhost:3000,http://localhost:3002,https://kitchen-frontend-admin-git-dev-avanishparashars-projects.vercel.app,https://kitchen-frontend-customer-git-dev-avanishparashars-projects.vercel.app,https://kitchen-frontend-shell-git-dev-avanishparashars-projects.vercel.app,https://kitchen-frontend-shell.vercel.app,https://qwikue.vercel.app
+  allowed-origins: https://kitchen-frontend-customer.vercel.app,https://kitchen-frontend-admin.vercel.app,http://localhost:3001,http://localhost:3000,http://localhost:3002,https://kitchen-frontend-admin-git-dev-avanishparashars-projects.vercel.app,https://kitchen-frontend-customer-git-dev-avanishparashars-projects.vercel.app,https://kitchen-frontend-shell-git-dev-avanishparashars-projects.vercel.app,https://kitchen-frontend-shell.vercel.app,https://qwikue.vercel.app,https://www.qwikue.in
 
 springdoc:
   swagger-ui:
