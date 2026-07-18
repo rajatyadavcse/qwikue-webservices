@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
@@ -65,31 +66,30 @@ public class ContactUsController {
 
             String emailBodyText = String.format(
                     "A new enquiry has been received.\n\n" +
-                    "-------------------------------------\n\n" +
-                    "Full Name:\n" +
-                    "%s\n\n" +
-                    "Email:\n" +
-                    "%s\n\n" +
-                    "Phone Number:\n" +
-                    "%s\n\n" +
-                    "Restaurant Name:\n" +
-                    "%s\n\n" +
-                    "Message:\n\n" +
-                    "%s\n\n" +
-                    "-------------------------------------\n\n" +
-                    "Submitted On:\n" +
-                    "%s",
+                            "-------------------------------------\n\n" +
+                            "Full Name:\n" +
+                            "%s\n\n" +
+                            "Email:\n" +
+                            "%s\n\n" +
+                            "Phone Number:\n" +
+                            "%s\n\n" +
+                            "Restaurant Name:\n" +
+                            "%s\n\n" +
+                            "Message:\n\n" +
+                            "%s\n\n" +
+                            "-------------------------------------\n\n" +
+                            "Submitted On:\n" +
+                            "%s",
                     request.getFullName(),
                     request.getEmail(),
                     phoneVal,
                     restaurantVal,
                     request.getMessage(),
-                    submittedOn
-            );
+                    submittedOn);
 
             // Wrap in styled HTML preserving whitespace and linebreaks
-            String emailHtmlBody = "<div style=\"font-family: Arial, sans-serif; white-space: pre-wrap; line-height: 1.6; color: #333;\">" 
-                    + emailBodyText 
+            String emailHtmlBody = "<div style=\"font-family: Arial, sans-serif; white-space: pre-wrap; line-height: 1.6; color: #333;\">"
+                    + emailBodyText
                     + "</div>";
 
             // Send notification to support@qwikue.in
@@ -103,6 +103,20 @@ public class ContactUsController {
 
         } catch (Exception e) {
             log.error("Failed to submit contact enquiry", e);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Something went wrong. Please try again later.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN')")
+    public ResponseEntity<?> getAllEnquiries() {
+        try {
+            return ResponseEntity.ok(contactEnquiryRepository.findAllByOrderByCreatedAtDesc());
+        } catch (Exception e) {
+            log.error("Failed to fetch contact enquiries", e);
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("message", "Something went wrong. Please try again later.");

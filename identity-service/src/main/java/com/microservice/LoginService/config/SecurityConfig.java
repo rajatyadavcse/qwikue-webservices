@@ -44,7 +44,6 @@ public class SecurityConfig {
             "/auth/resend-verification-otp",
             "/auth/forgot-password",
             "/auth/reset-password-otp",
-            "/api/v1/contact-us",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs",
@@ -75,6 +74,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers(PUBLIC_URLS).permitAll();
+                    auth.requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/contact-us").permitAll();
                     if (dynamicPublicUrls != null && dynamicPublicUrls.length > 0) {
                         for (String url : dynamicPublicUrls) {
                             if (url != null && !url.trim().isEmpty()) {
