@@ -3,6 +3,7 @@ package com.kitchen.order.dao;
 import com.kitchen.order.enums.OrderStatus;
 import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
+import com.kitchen.order.enums.OrderType;
 import com.kitchen.order.dto.response.OrderAppliedCharge;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -26,9 +27,9 @@ public class OrderDAO {
 
     /**
      * References public.order_entity composite PK (entityNo + restaurantId).
-     * Validated via restaurant-service before persisting.
+     * Validated via restaurant-service before persisting (mandatory for DINE_IN).
      */
-    @Column(name = "entity_no", nullable = false)
+    @Column(name = "entity_no")
     private String entityNo;
 
     /**
@@ -37,6 +38,10 @@ public class OrderDAO {
      */
     @Column(nullable = false)
     private Long restaurantId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_type", nullable = false, length = 20, columnDefinition = "varchar(20) default 'DINE_IN'")
+    private OrderType orderType = OrderType.DINE_IN;
 
     @Column(name = "order_entity_type", length = 50)
     private String orderEntityType;

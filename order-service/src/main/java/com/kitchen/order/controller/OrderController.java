@@ -173,6 +173,17 @@ public class OrderController {
         return ResponseEntity.ok(Map.of("statuses", statuses));
     }
 
+    // ── GET /orders/types (utility — return all valid order types) ───────────────
+
+    @Operation(summary = "List all possible order types", description = "Utility endpoint for UI dropdowns/options (e.g. DINE_IN, TAKE_AWAY).")
+    @GetMapping(value = "/types", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, String[]>> getOrderTypes() {
+        String[] types = java.util.Arrays.stream(com.kitchen.order.enums.OrderType.values())
+                .map(Enum::name)
+                .toArray(String[]::new);
+        return ResponseEntity.ok(Map.of("types", types));
+    }
+
     // ── GET /orders/{id}/stream (customer SSE tracking stream) ─────────────────
 
     @Operation(summary = "Stream order status updates for customer", description = "Standard HTTP-based SSE stream.")

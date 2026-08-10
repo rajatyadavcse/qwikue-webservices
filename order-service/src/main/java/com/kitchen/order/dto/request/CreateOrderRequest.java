@@ -2,6 +2,7 @@ package com.kitchen.order.dto.request;
 
 import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.OrderedBy;
+import com.kitchen.order.enums.OrderType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -16,8 +17,12 @@ public class CreateOrderRequest {
     @NotNull(message = "restaurantId is required")
     private Long restaurantId;
 
-    @NotBlank(message = "entityNo is required")
+    /**
+     * Mandatory for DINE_IN orders; optional for TAKE_AWAY orders.
+     */
     private String entityNo;
+
+    private OrderType orderType = OrderType.DINE_IN;
 
     @NotBlank(message = "customerName is required")
     private String customerName;

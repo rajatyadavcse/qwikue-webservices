@@ -14,6 +14,7 @@ import com.kitchen.order.enums.OrderStatus;
 import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.enums.OrderedBy;
+import com.kitchen.order.enums.OrderType;
 import com.kitchen.order.exception.InvalidStatusTransitionException;
 import com.kitchen.order.exception.ResourceNotFoundException;
 import com.kitchen.order.exception.ExternalServiceException;
@@ -38,6 +39,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -46,21 +48,23 @@ public class OrderServiceImpl implements IOrderService {
 
     private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
 
-    /** Active statuses shown on the kitchen dashboard. */
-    private static final List<OrderStatus> KITCHEN_ACTIVE_STATUSES = List.of(OrderStatus.PENDING, OrderStatus.PREPARING,
-            OrderStatus.READY);
+    private static final List<OrderStatus> KITCHEN_ACTIVE_STATUSES = List.of(
+            OrderStatus.PENDING,
+            OrderStatus.PREPARING,
+            OrderStatus.READY
+    );
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private OrderItemRepository orderItemRepository;
 
     @Autowired
     private CustomerRepository customerRepository;
 
     @Autowired
     private RestaurantTokenCounterRepository tokenCounterRepository;
-
-    @Autowired
-    private OrderItemRepository orderItemRepository;
 
     @Autowired
     private RestaurantValidationService validationService;
@@ -81,13 +85,21 @@ public class OrderServiceImpl implements IOrderService {
 
     @Override
     public OrderResponse createOrder(CreateOrderRequest request) {
-        log.info("Creating order for restaurantId={}, entityNo={}", request.getRestaurantId(), request.getEntityNo());
+        OrderType orderType = request.getOrderType() != null ? request.getOrderType() : OrderType.DINE_IN;
+        log.info("Creating order for restaurantId={}, orderType={}, entityNo={}",
+                request.getRestaurantId(), orderType, request.getEntityNo());
 
         // 1. Validate restaurant exists and get configurations
         RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(request.getRestaurantId());
 
-        // 2. Validate entity belongs to restaurant
-        RestaurantValidationService.EntityResponse entity = validationService.validateEntity(request.getEntityNo(), request.getRestaurantId());
+        // 2. Validate entity based on orderType
+        RestaurantValidationService.EntityResponse entity = null;
+        if (orderType == OrderType.DINE_IN) {
+            if (request.getEntityNo() == null || request.getEntityNo().trim().isEmpty()) {
+                throw new IllegalArgumentException("entityNo is required for DINE_IN orders");
+            }
+            entity = validationService.validateEntity(request.getEntityNo().trim(), request.getRestaurantId());
+        }
 
         // 3. Resolve/Create Customer details
         CustomerDAO customer;
@@ -117,11 +129,20 @@ public class OrderServiceImpl implements IOrderService {
         // 4. Build the order entity
         OrderDAO order = new OrderDAO();
         order.setRestaurantId(request.getRestaurantId());
-        order.setEntityNo(request.getEntityNo());
-        order.setCustomer(customer);
-        if (entity != null) {
-            order.setOrderEntityType(entity.getOrderEntityType());
+        order.setOrderType(orderType);
+        if (orderType == OrderType.DINE_IN) {
+            order.setEntityNo(request.getEntityNo().trim());
+            if (entity != null) {
+                order.setOrderEntityType(entity.getOrderEntityType());
+            }
+        } else {
+            String entityNo = (request.getEntityNo() != null && !request.getEntityNo().trim().isEmpty())
+                    ? request.getEntityNo().trim()
+                    : null;
+            order.setEntityNo(entityNo);
+            order.setOrderEntityType(null);
         }
+        order.setCustomer(customer);
         order.setNotes(request.getNotes());
         PaymentMode paymentMode = request.getPaymentMode() != null ? request.getPaymentMode() : PaymentMode.CASH;
         if (restaurant.getPaymentModes() != null && !restaurant.getPaymentModes().isEmpty()

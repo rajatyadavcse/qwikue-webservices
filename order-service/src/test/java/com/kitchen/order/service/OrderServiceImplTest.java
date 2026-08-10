@@ -9,6 +9,7 @@ import com.kitchen.order.enums.OrderStatus;
 import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.enums.OrderedBy;
+import com.kitchen.order.enums.OrderType;
 import com.kitchen.order.mapper.OrderMapper;
 import com.kitchen.order.dao.CustomerDAO;
 import com.kitchen.order.repository.CustomerRepository;
@@ -34,7 +35,9 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
@@ -746,6 +749,240 @@ public class OrderServiceImplTest {
                 () -> orderService.createOrder(request)
         );
         assertEquals("Payment mode ONLINE is not supported by this restaurant", exception.getMessage());
+    }
+
+    @Test
+    public void testCreateTakeAwayOrderWithoutEntityNoSuccess() {
+        // Arrange
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setRestaurantId(1L);
+        request.setOrderType(OrderType.TAKE_AWAY);
+        request.setEntityNo(null); // No entity/table for take away
+        request.setCustomerName("Jane Doe");
+        request.setPhone("9876543210");
+        request.setPaymentMode(PaymentMode.CASH);
+
+        OrderItemRequest itemRequest = new OrderItemRequest();
+        itemRequest.setMenuId(101L);
+        itemRequest.setQuantity(1);
+        request.setItems(Collections.singletonList(itemRequest));
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        restaurant.setRestaurantName("Tasty Takeaway");
+        restaurant.setStatus("ACTIVE");
+        restaurant.setPaymentModes(List.of(PaymentMode.CASH));
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        RestaurantValidationService.MenuResponse menu = new RestaurantValidationService.MenuResponse();
+        menu.setMenuId(101L);
+        menu.setItemName("Burger");
+        menu.setPrice(new BigDecimal("120.00"));
+        menu.setIsAvailable(true);
+        when(validationService.validateMenuAndGetPrice(101L)).thenReturn(menu);
+
+        when(customerRepository.findByPhone("9876543210")).thenReturn(Optional.empty());
+        when(customerRepository.save(any(CustomerDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tokenCounterRepository.getNextTokenNo(eq(1L), any(LocalDate.class))).thenReturn(12);
+
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO order = invocation.getArgument(0);
+            order.setOrderId(555L);
+            return order;
+        });
+
+        OrderResponse mockResponse = new OrderResponse();
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            mockResponse.setOrderId(dao.getOrderId());
+            mockResponse.setOrderType(dao.getOrderType());
+            mockResponse.setEntityNo(dao.getEntityNo());
+            mockResponse.setOrderEntityType(dao.getOrderEntityType());
+            mockResponse.setTotalAmount(dao.getTotalAmount());
+            mockResponse.setTokenNo(dao.getTokenNo());
+            return mockResponse;
+        });
+
+        // Act
+        OrderResponse response = orderService.createOrder(request);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(555L, response.getOrderId());
+        assertEquals(OrderType.TAKE_AWAY, response.getOrderType());
+        assertNull(response.getEntityNo());
+        assertNull(response.getOrderEntityType());
+        assertEquals(12, response.getTokenNo());
+
+        // Verify entity validation was never called for TAKE_AWAY without entityNo
+        verify(validationService, never()).validateEntity(any(), any());
+        verify(orderRepository).save(argThat(order ->
+                order.getOrderType() == OrderType.TAKE_AWAY &&
+                order.getEntityNo() == null &&
+                order.getOrderEntityType() == null
+        ));
+    }
+
+    @Test
+    public void testCreateDineInOrderWithoutEntityNoThrowsException() {
+        // Arrange
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setRestaurantId(1L);
+        request.setOrderType(OrderType.DINE_IN);
+        request.setEntityNo(null); // Missing entityNo
+        request.setCustomerName("John Doe");
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        // Act & Assert
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> orderService.createOrder(request)
+        );
+        assertEquals("entityNo is required for DINE_IN orders", ex.getMessage());
+        verify(validationService, never()).validateEntity(any(), any());
+    }
+
+    @Test
+    public void testCreateDineInOrderWithBlankEntityNoThrowsException() {
+        // Arrange
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setRestaurantId(1L);
+        request.setOrderType(OrderType.DINE_IN);
+        request.setEntityNo("   "); // Blank entityNo
+        request.setCustomerName("John Doe");
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        // Act & Assert
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> orderService.createOrder(request)
+        );
+        assertEquals("entityNo is required for DINE_IN orders", ex.getMessage());
+        verify(validationService, never()).validateEntity(any(), any());
+    }
+
+    @Test
+    public void testCreateTakeAwayOrderWithEntityNoSuccess() {
+        // Arrange
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setRestaurantId(1L);
+        request.setOrderType(OrderType.TAKE_AWAY);
+        request.setEntityNo("Counter-1");
+        request.setCustomerName("Jane Doe");
+        request.setPhone("9876543210");
+        request.setPaymentMode(PaymentMode.CASH);
+
+        OrderItemRequest itemRequest = new OrderItemRequest();
+        itemRequest.setMenuId(101L);
+        itemRequest.setQuantity(1);
+        request.setItems(Collections.singletonList(itemRequest));
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        restaurant.setPaymentModes(List.of(PaymentMode.CASH));
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        RestaurantValidationService.MenuResponse menu = new RestaurantValidationService.MenuResponse();
+        menu.setMenuId(101L);
+        menu.setItemName("Burger");
+        menu.setPrice(new BigDecimal("120.00"));
+        menu.setIsAvailable(true);
+        when(validationService.validateMenuAndGetPrice(101L)).thenReturn(menu);
+
+        when(customerRepository.findByPhone("9876543210")).thenReturn(Optional.empty());
+        when(customerRepository.save(any(CustomerDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tokenCounterRepository.getNextTokenNo(eq(1L), any(LocalDate.class))).thenReturn(13);
+
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO order = invocation.getArgument(0);
+            order.setOrderId(556L);
+            return order;
+        });
+
+        OrderResponse mockResponse = new OrderResponse();
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            mockResponse.setOrderId(dao.getOrderId());
+            mockResponse.setOrderType(dao.getOrderType());
+            mockResponse.setEntityNo(dao.getEntityNo());
+            return mockResponse;
+        });
+
+        // Act
+        OrderResponse response = orderService.createOrder(request);
+
+        // Assert
+        assertEquals(OrderType.TAKE_AWAY, response.getOrderType());
+        assertEquals("Counter-1", response.getEntityNo());
+        verify(validationService, never()).validateEntity(any(), any());
+    }
+
+    @Test
+    public void testCreateOrderDefaultsToDineInWhenOrderTypeIsNull() {
+        // Arrange
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setRestaurantId(1L);
+        request.setOrderType(null); // null orderType -> defaults to DINE_IN
+        request.setEntityNo("Table-5");
+        request.setCustomerName("Alice");
+        request.setPaymentMode(PaymentMode.CASH);
+
+        OrderItemRequest itemRequest = new OrderItemRequest();
+        itemRequest.setMenuId(101L);
+        itemRequest.setQuantity(1);
+        request.setItems(Collections.singletonList(itemRequest));
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        restaurant.setPaymentModes(List.of(PaymentMode.CASH));
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        RestaurantValidationService.EntityResponse entity = new RestaurantValidationService.EntityResponse();
+        entity.setEntityNo("Table-5");
+        entity.setRestaurantId(1L);
+        entity.setOrderEntityType("TABLE");
+        when(validationService.validateEntity("Table-5", 1L)).thenReturn(entity);
+
+        RestaurantValidationService.MenuResponse menu = new RestaurantValidationService.MenuResponse();
+        menu.setMenuId(101L);
+        menu.setItemName("Salad");
+        menu.setPrice(new BigDecimal("80.00"));
+        menu.setIsAvailable(true);
+        when(validationService.validateMenuAndGetPrice(101L)).thenReturn(menu);
+
+        when(customerRepository.save(any(CustomerDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tokenCounterRepository.getNextTokenNo(eq(1L), any(LocalDate.class))).thenReturn(14);
+
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO order = invocation.getArgument(0);
+            order.setOrderId(557L);
+            return order;
+        });
+
+        OrderResponse mockResponse = new OrderResponse();
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            mockResponse.setOrderId(dao.getOrderId());
+            mockResponse.setOrderType(dao.getOrderType());
+            mockResponse.setEntityNo(dao.getEntityNo());
+            mockResponse.setOrderEntityType(dao.getOrderEntityType());
+            return mockResponse;
+        });
+
+        // Act
+        OrderResponse response = orderService.createOrder(request);
+
+        // Assert
+        assertEquals(OrderType.DINE_IN, response.getOrderType());
+        assertEquals("Table-5", response.getEntityNo());
+        assertEquals("TABLE", response.getOrderEntityType());
+        verify(validationService, times(1)).validateEntity("Table-5", 1L);
     }
 }
 

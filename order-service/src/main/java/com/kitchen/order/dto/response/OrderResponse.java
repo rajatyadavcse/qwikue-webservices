@@ -4,6 +4,7 @@ import com.kitchen.order.enums.OrderStatus;
 import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.enums.OrderedBy;
+import com.kitchen.order.enums.OrderType;
 
 import lombok.Data;
 
@@ -17,6 +18,7 @@ public class OrderResponse {
     private Long orderId;
     private Long restaurantId;
     private String entityNo;
+    private OrderType orderType;
     private String orderEntityType;
     private Integer tokenNo;
     private OrderStatus status;
