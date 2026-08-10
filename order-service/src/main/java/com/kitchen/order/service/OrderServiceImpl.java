@@ -123,7 +123,12 @@ public class OrderServiceImpl implements IOrderService {
             order.setOrderEntityType(entity.getOrderEntityType());
         }
         order.setNotes(request.getNotes());
-        order.setPaymentMode(request.getPaymentMode() != null ? request.getPaymentMode() : PaymentMode.CASH);
+        PaymentMode paymentMode = request.getPaymentMode() != null ? request.getPaymentMode() : PaymentMode.CASH;
+        if (restaurant.getPaymentModes() != null && !restaurant.getPaymentModes().isEmpty()
+                && !restaurant.getPaymentModes().contains(paymentMode)) {
+            throw new IllegalArgumentException("Payment mode " + paymentMode + " is not supported by this restaurant");
+        }
+        order.setPaymentMode(paymentMode);
         order.setPaymentStatus(PaymentStatus.PENDING);
         order.setOrderedBy(request.getOrderedBy() != null ? request.getOrderedBy() : OrderedBy.CUSTOMER);
         if (order.getPaymentMode() == PaymentMode.CASH) {

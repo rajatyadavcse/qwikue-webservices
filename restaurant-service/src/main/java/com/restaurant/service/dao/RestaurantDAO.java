@@ -53,6 +53,10 @@ public class RestaurantDAO {
     @Column(name = "taxes_and_charges", columnDefinition = "jsonb")
     private List<RestaurantCharge> taxesAndCharges = new ArrayList<>();
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "payment_modes", columnDefinition = "jsonb")
+    private List<com.restaurant.service.model.PaymentMode> paymentModes = new ArrayList<>();
+
     @Column(name = "razorpay_linked_account_id", length = 50)
     private String razorpayLinkedAccountId;
 

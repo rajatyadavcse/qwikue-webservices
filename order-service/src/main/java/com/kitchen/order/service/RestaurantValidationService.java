@@ -50,6 +50,7 @@ public class RestaurantValidationService {
         private String restaurantName;
         private String status;
         private List<RestaurantChargeDto> taxesAndCharges;
+        private List<com.kitchen.order.enums.PaymentMode> paymentModes;
         private String razorpayLinkedAccountId;
         private String razorpayKeyId;
         private String razorpayKeySecret;
@@ -119,6 +120,11 @@ public class RestaurantValidationService {
                             dto.setCategory(charge.getCategory());
                             return dto;
                         })
+                        .collect(java.util.stream.Collectors.toList()));
+            }
+            if (restaurant.getPaymentModes() != null) {
+                response.setPaymentModes(restaurant.getPaymentModes().stream()
+                        .map(mode -> com.kitchen.order.enums.PaymentMode.valueOf(mode.name()))
                         .collect(java.util.stream.Collectors.toList()));
             }
             response.setRazorpayLinkedAccountId(restaurant.getRazorpayLinkedAccountId());

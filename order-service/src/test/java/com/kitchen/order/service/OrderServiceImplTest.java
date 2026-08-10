@@ -719,5 +719,33 @@ public class OrderServiceImplTest {
         assertEquals(OrderedBy.ADMIN, response.getOrderedBy());
         verify(orderRepository).save(argThat(order -> order.getOrderedBy() == OrderedBy.ADMIN));
     }
+
+    @Test
+    public void testCreateOrderThrowsExceptionWhenPaymentModeNotSupportedByRestaurant() {
+        // Arrange
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setRestaurantId(1L);
+        request.setEntityNo("10");
+        request.setCustomerName("John Doe");
+        request.setPhone("9876543210");
+        request.setPaymentMode(PaymentMode.ONLINE);
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        restaurant.setPaymentModes(List.of(PaymentMode.CASH)); // only CASH supported
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        RestaurantValidationService.EntityResponse entity = new RestaurantValidationService.EntityResponse();
+        entity.setEntityNo("10");
+        entity.setRestaurantId(1L);
+        when(validationService.validateEntity("10", 1L)).thenReturn(entity);
+
+        // Act & Assert
+        IllegalArgumentException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> orderService.createOrder(request)
+        );
+        assertEquals("Payment mode ONLINE is not supported by this restaurant", exception.getMessage());
+    }
 }
 

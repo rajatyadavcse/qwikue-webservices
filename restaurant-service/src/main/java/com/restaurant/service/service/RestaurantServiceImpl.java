@@ -25,6 +25,9 @@ public class RestaurantServiceImpl implements IRestaurantService {
     @Override
     public Restaurant createRestaurant(Restaurant restaurant) {
         restaurant.setRestaurantId(null); // ensure Hibernate treats this as a new entity
+        if (restaurant.getPaymentModes() == null || restaurant.getPaymentModes().isEmpty()) {
+            restaurant.setPaymentModes(List.of(com.restaurant.service.model.PaymentMode.CASH));
+        }
         if (restaurant.getCreatedDate() == null) {
             restaurant.setCreatedDate(new Date());
         }
@@ -63,6 +66,7 @@ public class RestaurantServiceImpl implements IRestaurantService {
         existingRestaurantDAO.setEstablishmentType(restaurantDetails.getEstablishmentType());
         existingRestaurantDAO.setOrderEntityTypes(restaurantDetails.getOrderEntityTypes());
         existingRestaurantDAO.setTaxesAndCharges(restaurantDetails.getTaxesAndCharges());
+        existingRestaurantDAO.setPaymentModes(restaurantDetails.getPaymentModes());
         if (restaurantDetails.getRazorpayKeyId() != null && !restaurantDetails.getRazorpayKeyId().isBlank() &&
                 restaurantDetails.getRazorpayKeySecret() != null && !restaurantDetails.getRazorpayKeySecret().isBlank()) {
             existingRestaurantDAO.setRazorpayKeyId(restaurantDetails.getRazorpayKeyId());

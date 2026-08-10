@@ -47,6 +47,8 @@ public class Restaurant implements Serializable {
 
     private List<RestaurantCharge> taxesAndCharges;
 
+    private List<PaymentMode> paymentModes;
+
     private String razorpayLinkedAccountId;
 
     private String razorpayKeyId;
