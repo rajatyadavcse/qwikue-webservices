@@ -1,8 +1,10 @@
 package com.microservice.LoginService.service;
 
 import com.microservice.LoginService.dto.*;
+import com.microservice.LoginService.entity.RefreshToken;
 import com.microservice.LoginService.entity.User;
 import com.microservice.LoginService.exception.ApiException;
+import com.microservice.LoginService.repository.RefreshTokenRepository;
 import com.microservice.LoginService.repository.UserRepository;
 import com.microservice.LoginService.security.JwtUtil;
 import com.microservice.LoginService.security.UserPrincipal;
@@ -14,9 +16,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -34,14 +34,15 @@ public class AuthService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // In-memory store: email → refresh token (lost on restart)
-    private final Map<String, String> refreshTokenStore = new ConcurrentHashMap<>();
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
     private EmailVerificationService emailVerificationService;
 
     // ── Login ─────────────────────────────────────────────────────────────────
 
+    @Transactional
     public AuthTokens login(LoginRequest request) {
         // Spring Security calls loadUserByUsername(email) internally
         Authentication auth = authenticationManager.authenticate(
@@ -59,13 +60,20 @@ public class AuthService {
 
         String accessToken  = jwtUtil.generateAccessToken(user.getEmail(), user.getRole(), user.getRestaurantId());
         String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
-        refreshTokenStore.put(user.getEmail(), refreshToken);
+
+        // Persist refresh token to DB
+        RefreshToken tokenEntity = refreshTokenRepository.findByEmail(user.getEmail())
+                .orElse(RefreshToken.builder().email(user.getEmail()).build());
+        tokenEntity.setToken(refreshToken);
+        tokenEntity.setExpiryDate(jwtUtil.extractExpiryAsInstant(refreshToken));
+        refreshTokenRepository.save(tokenEntity);
 
         return new AuthTokens(accessToken, refreshToken, "ROLE_" + user.getRole().name());
     }
 
     // ── Refresh Token ─────────────────────────────────────────────────────────
 
+    @Transactional
     public AuthTokens refreshToken(String refreshToken) {
         String email;
         try {
@@ -74,14 +82,16 @@ public class AuthService {
             throw new ApiException("Invalid refresh token", HttpStatus.UNAUTHORIZED);
         }
 
-        if (jwtUtil.isTokenExpired(refreshToken)) {
-            refreshTokenStore.remove(email);
-            throw new ApiException("Refresh token expired. Please login again.", HttpStatus.UNAUTHORIZED);
+        RefreshToken storedTokenEntity = refreshTokenRepository.findByEmail(email)
+                .orElseThrow(() -> new ApiException("Refresh token is invalid or already used", HttpStatus.UNAUTHORIZED));
+
+        if (!storedTokenEntity.getToken().equals(refreshToken)) {
+            throw new ApiException("Refresh token is invalid or already used", HttpStatus.UNAUTHORIZED);
         }
 
-        String storedToken = refreshTokenStore.get(email);
-        if (storedToken == null || !storedToken.equals(refreshToken)) {
-            throw new ApiException("Refresh token is invalid or already used", HttpStatus.UNAUTHORIZED);
+        if (jwtUtil.isTokenExpired(refreshToken)) {
+            refreshTokenRepository.delete(storedTokenEntity);
+            throw new ApiException("Refresh token expired. Please login again.", HttpStatus.UNAUTHORIZED);
         }
 
         User user = userRepository.findByEmail(email)
@@ -89,30 +99,37 @@ public class AuthService {
 
         String newAccessToken  = jwtUtil.generateAccessToken(user.getEmail(), user.getRole(), user.getRestaurantId());
         String newRefreshToken = jwtUtil.generateRefreshToken(user.getEmail());
-        refreshTokenStore.put(email, newRefreshToken);
+
+        // Rotate token in DB
+        storedTokenEntity.setToken(newRefreshToken);
+        storedTokenEntity.setExpiryDate(jwtUtil.extractExpiryAsInstant(newRefreshToken));
+        refreshTokenRepository.save(storedTokenEntity);
 
         return new AuthTokens(newAccessToken, newRefreshToken, "ROLE_" + user.getRole().name());
     }
 
     // ── Logout ────────────────────────────────────────────────────────────────
 
+    @Transactional
     public void logout(String email) {
-        refreshTokenStore.remove(email);
+        refreshTokenRepository.findByEmail(email).ifPresent(refreshTokenRepository::delete);
     }
 
     // ── Reset Password (Admin-only) ───────────────────────────────────────────
 
+    @Transactional
     public void resetPassword(ResetPasswordRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ApiException("User not found: " + request.getEmail(), HttpStatus.NOT_FOUND));
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
-        refreshTokenStore.remove(user.getEmail());
+        refreshTokenRepository.findByEmail(user.getEmail()).ifPresent(refreshTokenRepository::delete);
     }
 
     // ── Change Password (Self-service) ────────────────────────────────────────
 
+    @Transactional
     public void changePassword(String email, ChangePasswordRequest request) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ApiException("User not found", HttpStatus.NOT_FOUND));
@@ -123,7 +140,7 @@ public class AuthService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
-        refreshTokenStore.remove(email);
+        refreshTokenRepository.findByEmail(email).ifPresent(refreshTokenRepository::delete);
     }
 
     // ── Verify Email ──────────────────────────────────────────────────────────
@@ -183,6 +200,7 @@ public class AuthService {
 
     // ── Reset Password with OTP ────────────────────────────────────────────────
 
+    @Transactional
     public void resetPasswordWithOtp(ResetPasswordWithOtpRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ApiException(
@@ -190,8 +208,8 @@ public class AuthService {
 
         if (!Boolean.TRUE.equals(user.getIsEmailVerified())) {
             throw new ApiException(
-                    "Email is not verified. Password reset is not available for this account.",
-                    HttpStatus.FORBIDDEN);
+                      "Email is not verified. Password reset is not available for this account.",
+                      HttpStatus.FORBIDDEN);
         }
 
         emailVerificationService.verifyPasswordResetOtp(user, request.getOtp());
@@ -200,7 +218,7 @@ public class AuthService {
         userRepository.save(user);
 
         // Invalidate all active sessions for this user
-        refreshTokenStore.remove(user.getEmail());
+        refreshTokenRepository.findByEmail(user.getEmail()).ifPresent(refreshTokenRepository::delete);
         log.info("AuthService: password reset via OTP for '{}'", user.getEmail());
     }
 }
