@@ -56,6 +56,10 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end,
             Pageable pageable);
+
+    /** Check if other active orders exist for a given table/entity in a restaurant. */
+    boolean existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(
+            Long restaurantId, String entityNo, List<OrderStatus> statuses, Long orderId);
 }
 
 

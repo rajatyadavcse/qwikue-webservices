@@ -241,4 +241,18 @@ public class RestaurantValidationService {
             throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.", e);
         }
     }
+
+    /**
+     * Updates the status of an order entity (e.g. AVAILABLE, OCCUPIED, BILL_PENDING).
+     */
+    public void updateEntityStatus(String entityNo, Long restaurantId, com.restaurant.service.model.OrderEntityStatus status) {
+        log.debug("Updating entityNo={}, restaurantId={} to status={}", entityNo, restaurantId, status);
+        try {
+            orderEntityService.updateOrderEntityStatus(entityNo, restaurantId, status);
+        } catch (com.restaurant.service.exception.ResourceNotFoundException e) {
+            log.warn("Could not update entity status (entity not found): entityNo={}, restaurantId={}", entityNo, restaurantId);
+        } catch (Exception e) {
+            log.error("Failed to update entity status for entityNo={}, restaurantId={}: {}", entityNo, restaurantId, e.getMessage());
+        }
+    }
 }

@@ -983,6 +983,56 @@ public class OrderServiceImplTest {
         assertEquals("Table-5", response.getEntityNo());
         assertEquals("TABLE", response.getOrderEntityType());
         verify(validationService, times(1)).validateEntity("Table-5", 1L);
+        verify(validationService, times(1)).updateEntityStatus("Table-5", 1L, com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
+    }
+
+    @Test
+    void updateOrderStatus_completed_releasesTableWhenNoOtherActiveOrders() {
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(100L);
+        order.setRestaurantId(1L);
+        order.setOrderType(OrderType.DINE_IN);
+        order.setEntityNo("Table-1");
+        order.setStatus(OrderStatus.READY);
+
+        when(orderRepository.findById(100L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(eq(1L), eq("Table-1"), any(), eq(100L))).thenReturn(false);
+
+        OrderResponse mockResponse = new OrderResponse();
+        mockResponse.setOrderId(100L);
+        mockResponse.setStatus(OrderStatus.COMPLETED);
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenReturn(mockResponse);
+
+        com.kitchen.order.dto.request.UpdateOrderStatusRequest request = new com.kitchen.order.dto.request.UpdateOrderStatusRequest();
+        request.setStatus(OrderStatus.COMPLETED);
+
+        orderService.updateOrderStatus(100L, request);
+
+        verify(validationService, times(1)).updateEntityStatus("Table-1", 1L, com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
+    }
+
+    @Test
+    void cancelOrder_releasesTableWhenNoOtherActiveOrders() {
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(101L);
+        order.setRestaurantId(1L);
+        order.setOrderType(OrderType.DINE_IN);
+        order.setEntityNo("Table-2");
+        order.setStatus(OrderStatus.PENDING);
+
+        when(orderRepository.findById(101L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(eq(1L), eq("Table-2"), any(), eq(101L))).thenReturn(false);
+
+        OrderResponse mockResponse = new OrderResponse();
+        mockResponse.setOrderId(101L);
+        mockResponse.setStatus(OrderStatus.CANCELLED);
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenReturn(mockResponse);
+
+        orderService.cancelOrder(101L, "Customer left");
+
+        verify(validationService, times(1)).updateEntityStatus("Table-2", 1L, com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
     }
 }
 

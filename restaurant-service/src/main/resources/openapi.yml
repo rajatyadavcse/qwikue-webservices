@@ -606,6 +606,55 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /entities/{entityNo}/restaurant/{restaurantId}/status:
+    patch:
+      tags:
+        - OrderEntity
+      summary: Update order entity occupancy status
+      description: Updates the status of an order entity (e.g. AVAILABLE, OCCUPIED, BILL_PENDING).
+      operationId: updateOrderEntityStatus
+      parameters:
+        - name: entityNo
+          in: path
+          description: Entity number/name
+          required: true
+          schema:
+            type: string
+          example: "Table 1"
+        - name: restaurantId
+          in: path
+          description: Restaurant ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+        - name: status
+          in: query
+          description: New status of the order entity
+          required: true
+          schema:
+            $ref: '#/components/schemas/OrderEntityStatus'
+      responses:
+        '200':
+          description: Order entity status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderEntity'
+        '400':
+          description: Invalid status value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Order entity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 # ===========================================================================
 # Reusable Components
 # ===========================================================================
@@ -928,9 +977,7 @@ components:
             - ROOM
             - BED
         status:
-          type: string
-          description: Current availability status
-          example: "ACTIVE"
+          $ref: '#/components/schemas/OrderEntityStatus'
         QRUrl:
           type: string
           description: URL pointing to QR code
@@ -970,10 +1017,17 @@ components:
             - ROOM
             - BED
         status:
-          type: string
-          description: Current availability status
-          example: "ACTIVE"
+          $ref: '#/components/schemas/OrderEntityStatus'
         QRUrl:
           type: string
           description: URL pointing to QR code
           example: "http://qrcodes.com/room-101.png"
+
+    OrderEntityStatus:
+      type: string
+      description: Occupancy/availability status of an order entity
+      example: "AVAILABLE"
+      enum:
+        - AVAILABLE
+        - OCCUPIED
+        - BILL_PENDING

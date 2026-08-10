@@ -14,6 +14,8 @@ public interface IOrderEntityService {
 
     public List<OrderEntity> getOrderEntitiesByRestaurantId(Long restaurantId);
 
+    public OrderEntity updateOrderEntityStatus(String entityNo, Long restaurantId, com.restaurant.service.model.OrderEntityStatus status);
+
     public void deleteOrderEntity(String entityNo, Long restaurantId);
 
 }

@@ -48,6 +48,17 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
                     + " already exists. Please try with different entityNo or try updating the existing record");
         }
 
+        if (orderEntity.getStatus() == null || orderEntity.getStatus().trim().isEmpty()) {
+            orderEntity.setStatus(com.restaurant.service.model.OrderEntityStatus.AVAILABLE.name());
+        } else {
+            try {
+                com.restaurant.service.model.OrderEntityStatus.valueOf(orderEntity.getStatus().trim().toUpperCase());
+                orderEntity.setStatus(orderEntity.getStatus().trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid status: " + orderEntity.getStatus() + ". Allowed values: AVAILABLE, OCCUPIED, BILL_PENDING");
+            }
+        }
+
         OrderEntityDAO orderEntityDAO = orderEntityMapper.orderEntityToOrderEntityDAO(orderEntity);
         return orderEntityMapper.orderEntityDAOToOrderEntity(orderEntityRepository.save(orderEntityDAO));
     }
@@ -63,7 +74,33 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
             throw new ResourceNotFoundException("Order Entity ID is required for update");
         }
 
+        if (orderEntity.getStatus() != null && !orderEntity.getStatus().trim().isEmpty()) {
+            try {
+                com.restaurant.service.model.OrderEntityStatus.valueOf(orderEntity.getStatus().trim().toUpperCase());
+                orderEntity.setStatus(orderEntity.getStatus().trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid status: " + orderEntity.getStatus() + ". Allowed values: AVAILABLE, OCCUPIED, BILL_PENDING");
+            }
+        }
+
         OrderEntityDAO orderEntityDAO = orderEntityMapper.orderEntityToOrderEntityDAO(orderEntity);
+        return orderEntityMapper.orderEntityDAOToOrderEntity(orderEntityRepository.save(orderEntityDAO));
+    }
+
+    @Override
+    public OrderEntity updateOrderEntityStatus(String entityNo, Long restaurantId, com.restaurant.service.model.OrderEntityStatus status) {
+        if (entityNo == null || restaurantId == null || status == null) {
+            throw new IllegalArgumentException("Entity No, Restaurant ID, and Status are required");
+        }
+        OrderEntityId orderEntityId = new OrderEntityId();
+        orderEntityId.setEntityNo(entityNo);
+        orderEntityId.setRestaurantId(restaurantId);
+
+        OrderEntityDAO orderEntityDAO = orderEntityRepository.findById(orderEntityId)
+                .orElseThrow(() -> new ResourceNotFoundException("Record with entityNo " + entityNo
+                        + " and restaurantId " + restaurantId + " not found"));
+
+        orderEntityDAO.setStatus(status.name());
         return orderEntityMapper.orderEntityDAOToOrderEntity(orderEntityRepository.save(orderEntityDAO));
     }
 

@@ -261,6 +261,10 @@ public class OrderServiceImpl implements IOrderService {
 
         log.info("Order created successfully with orderId={}, tokenNo={}", saved.getOrderId(), saved.getTokenNo());
 
+        if (saved.getOrderType() == OrderType.DINE_IN && saved.getEntityNo() != null && !saved.getEntityNo().trim().isEmpty()) {
+            validationService.updateEntityStatus(saved.getEntityNo().trim(), saved.getRestaurantId(), com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
+        }
+
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
         if (saved.getPaymentMode() == PaymentMode.ONLINE) {
             response.setRazorpayKeyId(restaurant.getRazorpayKeyId());
@@ -420,6 +424,10 @@ public class OrderServiceImpl implements IOrderService {
         
         OrderDAO saved = orderRepository.save(order);
 
+        if (newStatus == OrderStatus.COMPLETED) {
+            releaseEntityIfNoActiveOrders(saved);
+        }
+
         log.info("Order {} status updated to {}", orderId, newStatus);
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
         eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
@@ -444,6 +452,8 @@ public class OrderServiceImpl implements IOrderService {
         order.setStatus(OrderStatus.CANCELLED);
         order.setReason(reason);
         OrderDAO saved = orderRepository.save(order);
+
+        releaseEntityIfNoActiveOrders(saved);
 
         log.info("Order {} cancelled. Reason: {}", orderId, reason);
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
@@ -490,6 +500,11 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         OrderDAO saved = orderRepository.save(order);
+
+        if (saved.getStatus() == OrderStatus.CANCELLED) {
+            releaseEntityIfNoActiveOrders(saved);
+        }
+
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
         eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
         return response;
@@ -497,6 +512,19 @@ public class OrderServiceImpl implements IOrderService {
 
 
     // ── Private helpers ────────────────────────────────────────────────────────
+
+    private void releaseEntityIfNoActiveOrders(OrderDAO order) {
+        if (order.getOrderType() == OrderType.DINE_IN && order.getEntityNo() != null && !order.getEntityNo().trim().isEmpty()) {
+            boolean hasOtherActiveOrders = orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(
+                    order.getRestaurantId(),
+                    order.getEntityNo().trim(),
+                    List.of(OrderStatus.PAYMENT_PENDING, OrderStatus.PENDING, OrderStatus.PREPARING, OrderStatus.READY),
+                    order.getOrderId());
+            if (!hasOtherActiveOrders) {
+                validationService.updateEntityStatus(order.getEntityNo().trim(), order.getRestaurantId(), com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
+            }
+        }
+    }
 
     private OrderDAO findOrderById(Long orderId) {
         return orderRepository.findById(orderId)

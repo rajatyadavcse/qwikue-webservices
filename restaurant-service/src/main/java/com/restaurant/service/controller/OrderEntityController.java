@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -44,6 +45,14 @@ public class OrderEntityController {
     @PutMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<OrderEntity> updateOrderEntity(@RequestBody OrderEntity orderEntity) {
         return new ResponseEntity<>(orderEntityService.updateOrderEntity(orderEntity), HttpStatus.OK);
+    }
+
+    @PatchMapping(value = "/{entityNo}/restaurant/{restaurantId}/status", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<OrderEntity> updateOrderEntityStatus(
+            @PathVariable String entityNo,
+            @PathVariable Long restaurantId,
+            @RequestParam com.restaurant.service.model.OrderEntityStatus status) {
+        return new ResponseEntity<>(orderEntityService.updateOrderEntityStatus(entityNo, restaurantId, status), HttpStatus.OK);
     }
 
     @DeleteMapping(value = "/{entityNo}/restaurant/{restaurantId}", produces = MediaType.APPLICATION_JSON_VALUE)
