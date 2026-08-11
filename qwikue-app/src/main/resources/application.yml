@@ -37,7 +37,7 @@ server:
 # Consolidated properties for components
 jwt:
   secret: aWRlbnRpdHktc2VydmljZS1zZWNyZXQta2V5LTMyYnl0ZQ==
-  access-token-expiry-ms: 900000
+  access-token-expiry-ms: 3600000
   refresh-token-expiry-ms: 604800000
 
 app:
