@@ -55,7 +55,7 @@ public class OrderServiceImplTest {
     private RestaurantTokenCounterRepository tokenCounterRepository;
 
     @Mock
-    private RestaurantValidationService validationService;
+    private IRestaurantValidationService validationService;
 
     @Mock
     private OrderMapper orderMapper;
@@ -1033,6 +1033,49 @@ public class OrderServiceImplTest {
         orderService.cancelOrder(101L, "Customer left");
 
         verify(validationService, times(1)).updateEntityStatus("Table-2", 1L, com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
+    }
+
+    @Test
+    void getCurrentOrderByEntity_whenActiveOrderExists_returnsOrderResponse() {
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(200L);
+        order.setRestaurantId(1L);
+        order.setEntityNo("T-1");
+        order.setStatus(OrderStatus.PREPARING);
+
+        OrderResponse expectedResponse = new OrderResponse();
+        expectedResponse.setOrderId(200L);
+        expectedResponse.setStatus(OrderStatus.PREPARING);
+
+        when(orderRepository.findFirstByRestaurantIdAndEntityNoAndStatusInOrderByCreatedAtDesc(
+                eq(1L), eq("T-1"), eq(List.of(OrderStatus.PENDING, OrderStatus.PREPARING, OrderStatus.READY))))
+                .thenReturn(Optional.of(order));
+        when(orderMapper.orderDAOToOrderResponse(order)).thenReturn(expectedResponse);
+
+        OrderResponse result = orderService.getCurrentOrderByEntity(1L, "T-1");
+
+        assertNotNull(result);
+        assertEquals(200L, result.getOrderId());
+        assertEquals(OrderStatus.PREPARING, result.getStatus());
+    }
+
+    @Test
+    void getCurrentOrderByEntity_whenNoActiveOrderExists_returnsNull() {
+        when(orderRepository.findFirstByRestaurantIdAndEntityNoAndStatusInOrderByCreatedAtDesc(
+                eq(1L), eq("T-1"), eq(List.of(OrderStatus.PENDING, OrderStatus.PREPARING, OrderStatus.READY))))
+                .thenReturn(Optional.empty());
+
+        OrderResponse result = orderService.getCurrentOrderByEntity(1L, "T-1");
+
+        assertNull(result);
+    }
+
+    @Test
+    void getCurrentOrderByEntity_whenInvalidInputs_returnsNull() {
+        assertNull(orderService.getCurrentOrderByEntity(null, "T-1"));
+        assertNull(orderService.getCurrentOrderByEntity(1L, null));
+        assertNull(orderService.getCurrentOrderByEntity(1L, "   "));
+        verifyNoInteractions(orderRepository);
     }
 }
 

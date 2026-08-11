@@ -60,5 +60,11 @@ public interface IOrderService {
      * Marks payment as failed for an order, updates payment status, and sets the failure reason.
      */
     OrderResponse failPayment(Long orderId, String errorMessage);
+
+    /**
+     * Retrieves the currently active order (status PENDING to READY) for a given restaurant and entity (table).
+     * Returns null if no active order is found.
+     */
+    OrderResponse getCurrentOrderByEntity(Long restaurantId, String entityNo);
 }
 

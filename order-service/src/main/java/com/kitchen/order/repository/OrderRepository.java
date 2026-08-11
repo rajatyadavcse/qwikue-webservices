@@ -13,6 +13,7 @@ import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
@@ -60,6 +61,10 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
     /** Check if other active orders exist for a given table/entity in a restaurant. */
     boolean existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(
             Long restaurantId, String entityNo, List<OrderStatus> statuses, Long orderId);
+
+    /** Fetch the latest active order for a given entity in a restaurant. */
+    Optional<OrderDAO> findFirstByRestaurantIdAndEntityNoAndStatusInOrderByCreatedAtDesc(
+            Long restaurantId, String entityNo, List<OrderStatus> statuses);
 }
 
 

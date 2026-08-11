@@ -23,7 +23,7 @@ import java.util.List;
  * using synchronous RestClient calls before an order is persisted.
  */
 @Service
-public class RestaurantValidationService {
+public class RestaurantValidationService implements IRestaurantValidationService {
 
     private static final Logger log = LoggerFactory.getLogger(RestaurantValidationService.class);
 

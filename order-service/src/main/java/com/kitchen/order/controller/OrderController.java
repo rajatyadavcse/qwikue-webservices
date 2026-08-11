@@ -57,6 +57,24 @@ public class OrderController {
     public ResponseEntity<OrderResponse> createOrder(@Valid @RequestBody CreateOrderRequest request) {
         return new ResponseEntity<>(orderService.createOrder(request), HttpStatus.CREATED);
     }
+    // ── GET /orders/current?restaurantId=&entityNo= ───────────────────────────
+
+    @Operation(
+            summary = "Get current active order for an entity",
+            description = "Returns the single currently active order (PENDING, PREPARING, or READY) for a given restaurantId and entityNo. Returns empty response if none found."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Active order or empty if none active")
+    })
+    @GetMapping(value = "/current", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<OrderResponse> getCurrentOrder(
+            @Parameter(description = "Restaurant ID", required = true)
+            @RequestParam Long restaurantId,
+
+            @Parameter(description = "Entity/Table Number", required = true)
+            @RequestParam String entityNo) {
+        return ResponseEntity.ok(orderService.getCurrentOrderByEntity(restaurantId, entityNo));
+    }
 
     // ── GET /orders/{id} ──────────────────────────────────────────────────────
 

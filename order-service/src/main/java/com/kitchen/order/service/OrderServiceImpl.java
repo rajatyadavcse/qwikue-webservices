@@ -67,7 +67,7 @@ public class OrderServiceImpl implements IOrderService {
     private RestaurantTokenCounterRepository tokenCounterRepository;
 
     @Autowired
-    private RestaurantValidationService validationService;
+    private IRestaurantValidationService validationService;
 
     @Autowired
     private OrderMapper orderMapper;
@@ -510,6 +510,19 @@ public class OrderServiceImpl implements IOrderService {
         return response;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public OrderResponse getCurrentOrderByEntity(Long restaurantId, String entityNo) {
+        if (restaurantId == null || entityNo == null || entityNo.isBlank()) {
+            return null;
+        }
+
+        log.debug("Fetching current active order for restaurantId={}, entityNo={}", restaurantId, entityNo);
+        return orderRepository.findFirstByRestaurantIdAndEntityNoAndStatusInOrderByCreatedAtDesc(
+                        restaurantId, entityNo.trim(), KITCHEN_ACTIVE_STATUSES)
+                .map(orderMapper::orderDAOToOrderResponse)
+                .orElse(null);
+    }
 
     // ── Private helpers ────────────────────────────────────────────────────────
 
