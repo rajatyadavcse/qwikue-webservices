@@ -4,11 +4,14 @@ import com.microservice.LoginService.dto.*;
 import com.microservice.LoginService.entity.Role;
 import com.microservice.LoginService.entity.User;
 import com.microservice.LoginService.exception.ApiException;
+import com.microservice.LoginService.repository.EmailVerificationRepository;
+import com.microservice.LoginService.repository.RefreshTokenRepository;
 import com.microservice.LoginService.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -18,6 +21,12 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private EmailVerificationRepository emailVerificationRepository;
+
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -105,11 +114,13 @@ public class UserService {
 
     // ── Delete User ───────────────────────────────────────────────────────────
 
+    @Transactional
     public void deleteUser(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new ApiException("User not found with id: " + id, HttpStatus.NOT_FOUND);
-        }
-        userRepository.deleteById(id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ApiException("User not found with id: " + id, HttpStatus.NOT_FOUND));
+        refreshTokenRepository.deleteByEmail(user.getEmail());
+        emailVerificationRepository.deleteByUser(user);
+        userRepository.delete(user);
     }
 
     // ── Activate / Deactivate ─────────────────────────────────────────────────

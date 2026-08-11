@@ -38,4 +38,8 @@ public interface EmailVerificationRepository extends JpaRepository<EmailVerifica
     long countByUserAndTypeAndCreatedAtAfter(@Param("user") User user,
                                              @Param("type") OtpType type,
                                              @Param("since") LocalDateTime since);
+
+    @Modifying
+    @Transactional
+    void deleteByUser(User user);
 }
