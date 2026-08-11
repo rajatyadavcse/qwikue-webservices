@@ -484,6 +484,27 @@ public class OrderServiceImpl implements IOrderService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getCurrentOrders(Long restaurantId, String entityNo) {
+        if (restaurantId == null) {
+            return Collections.emptyList();
+        }
+
+        if (entityNo != null && !entityNo.isBlank()) {
+            log.debug("Fetching current active order for restaurantId={}, entityNo={}", restaurantId, entityNo);
+            return orderRepository.findFirstByRestaurantIdAndEntityNoAndStatusInOrderByCreatedAtDesc(
+                            restaurantId, entityNo.trim(), KITCHEN_ACTIVE_STATUSES)
+                    .map(orderMapper::orderDAOToOrderResponse)
+                    .map(List::of)
+                    .orElse(Collections.emptyList());
+        }
+
+        log.debug("Fetching all current active orders for restaurantId={}", restaurantId);
+        List<OrderDAO> activeOrders = orderRepository.findByRestaurantIdAndStatusIn(restaurantId, KITCHEN_ACTIVE_STATUSES);
+        return orderMapper.orderDAOListToResponseList(activeOrders);
+    }
+
+    @Override
     public OrderResponse applyOrderDiscount(Long orderId, OrderDiscountRequest request) {
         log.info("Applying order-level discount for orderId={}: type={}, value={}, reason={}",
                 orderId, request.getType(), request.getValue(), request.getReason());

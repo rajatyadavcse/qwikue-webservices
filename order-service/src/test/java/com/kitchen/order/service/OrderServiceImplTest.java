@@ -41,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
@@ -58,7 +59,7 @@ public class OrderServiceImplTest {
     private RestaurantTokenCounterRepository tokenCounterRepository;
 
     @Mock
-    private IRestaurantValidationService validationService;
+    private RestaurantValidationService validationService;
 
     @Mock
     private OrderMapper orderMapper;
@@ -1074,11 +1075,83 @@ public class OrderServiceImplTest {
     }
 
     @Test
-    void getCurrentOrderByEntity_whenInvalidInputs_returnsNull() {
-        assertNull(orderService.getCurrentOrderByEntity(null, "T-1"));
-        assertNull(orderService.getCurrentOrderByEntity(1L, null));
-        assertNull(orderService.getCurrentOrderByEntity(1L, "   "));
-        verifyNoInteractions(orderRepository);
+    void getCurrentOrders_whenEntityNoProvidedAndActiveOrderExists_returnsListWithOrder() {
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(200L);
+        order.setRestaurantId(1L);
+        order.setEntityNo("T-1");
+        order.setStatus(OrderStatus.PREPARING);
+
+        OrderResponse expectedResponse = new OrderResponse();
+        expectedResponse.setOrderId(200L);
+        expectedResponse.setStatus(OrderStatus.PREPARING);
+
+        when(orderRepository.findFirstByRestaurantIdAndEntityNoAndStatusInOrderByCreatedAtDesc(
+                eq(1L), eq("T-1"), eq(List.of(OrderStatus.PENDING, OrderStatus.PREPARING, OrderStatus.READY))))
+                .thenReturn(Optional.of(order));
+        when(orderMapper.orderDAOToOrderResponse(order)).thenReturn(expectedResponse);
+
+        List<OrderResponse> result = orderService.getCurrentOrders(1L, "T-1");
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(200L, result.get(0).getOrderId());
+        assertEquals(OrderStatus.PREPARING, result.get(0).getStatus());
+    }
+
+    @Test
+    void getCurrentOrders_whenEntityNoProvidedAndNoActiveOrderExists_returnsEmptyList() {
+        when(orderRepository.findFirstByRestaurantIdAndEntityNoAndStatusInOrderByCreatedAtDesc(
+                eq(1L), eq("T-1"), eq(List.of(OrderStatus.PENDING, OrderStatus.PREPARING, OrderStatus.READY))))
+                .thenReturn(Optional.empty());
+
+        List<OrderResponse> result = orderService.getCurrentOrders(1L, "T-1");
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getCurrentOrders_whenEntityNoNotProvided_returnsAllActiveOrdersForRestaurant() {
+        OrderDAO order1 = new OrderDAO();
+        order1.setOrderId(101L);
+        order1.setRestaurantId(1L);
+        order1.setStatus(OrderStatus.PENDING);
+
+        OrderDAO order2 = new OrderDAO();
+        order2.setOrderId(102L);
+        order2.setRestaurantId(1L);
+        order2.setStatus(OrderStatus.PREPARING);
+
+        OrderResponse resp1 = new OrderResponse();
+        resp1.setOrderId(101L);
+        OrderResponse resp2 = new OrderResponse();
+        resp2.setOrderId(102L);
+
+        when(orderRepository.findByRestaurantIdAndStatusIn(
+                eq(1L), eq(List.of(OrderStatus.PENDING, OrderStatus.PREPARING, OrderStatus.READY))))
+                .thenReturn(List.of(order1, order2));
+        when(orderMapper.orderDAOListToResponseList(List.of(order1, order2)))
+                .thenReturn(List.of(resp1, resp2));
+
+        List<OrderResponse> resultNullEntity = orderService.getCurrentOrders(1L, null);
+        assertNotNull(resultNullEntity);
+        assertEquals(2, resultNullEntity.size());
+
+        List<OrderResponse> resultBlankEntity = orderService.getCurrentOrders(1L, "   ");
+        assertNotNull(resultBlankEntity);
+        assertEquals(2, resultBlankEntity.size());
+    }
+
+    @Test
+    void getCurrentOrders_whenRestaurantIdNull_returnsEmptyList() {
+        List<OrderResponse> result = orderService.getCurrentOrders(null, "T-1");
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+
+        List<OrderResponse> resultNoEntity = orderService.getCurrentOrders(null, null);
+        assertNotNull(resultNoEntity);
+        assertTrue(resultNoEntity.isEmpty());
     }
 
     // ── Order Discount Tests ───────────────────────────────────────────────────

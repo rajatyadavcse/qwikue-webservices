@@ -69,6 +69,14 @@ public interface IOrderService {
     OrderResponse getCurrentOrderByEntity(Long restaurantId, String entityNo);
 
     /**
+     * Retrieves currently active orders (status PENDING to READY) for a given restaurant,
+     * optionally filtered by entity (table).
+     * If entityNo is provided, returns active order for that entity in a list.
+     * If entityNo is null/blank, returns all active orders for the restaurant.
+     */
+    List<OrderResponse> getCurrentOrders(Long restaurantId, String entityNo);
+
+    /**
      * Applies or updates an order-level discount on an existing order and recalculates totals.
      */
     OrderResponse applyOrderDiscount(Long orderId, OrderDiscountRequest request);
