@@ -39,7 +39,7 @@ public class UserService {
         // ADMIN cannot create SUPER_ADMIN or another ADMIN
         if (creator.getRole() == Role.ADMIN) {
             if (request.getRole() == Role.SUPER_ADMIN || request.getRole() == Role.ADMIN) {
-                throw new ApiException("ADMIN can only create STAFF, KITCHEN, or WAITER users", HttpStatus.FORBIDDEN);
+                throw new ApiException("ADMIN can only create STAFF, KITCHEN, WAITER, or CASHIER users", HttpStatus.FORBIDDEN);
             }
         }
 
