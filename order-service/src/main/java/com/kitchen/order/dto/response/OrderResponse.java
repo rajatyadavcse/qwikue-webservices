@@ -5,6 +5,7 @@ import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.enums.OrderedBy;
 import com.kitchen.order.enums.OrderType;
+import com.kitchen.order.enums.DiscountType;
 
 import lombok.Data;
 
@@ -26,6 +27,10 @@ public class OrderResponse {
     private BigDecimal taxAmount;
     private BigDecimal serviceChargeAmount;
     private BigDecimal discountAmount;
+    private DiscountType orderDiscountType;
+    private BigDecimal orderDiscountRate;
+    private BigDecimal orderDiscountAmount;
+    private String orderDiscountReason;
     private BigDecimal totalAmount;
     private List<OrderAppliedCharge> taxesAndCharges;
     private String notes;

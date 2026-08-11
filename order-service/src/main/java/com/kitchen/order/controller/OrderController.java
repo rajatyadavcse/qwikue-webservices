@@ -1,6 +1,7 @@
 package com.kitchen.order.controller;
 
 import com.kitchen.order.dto.request.CreateOrderRequest;
+import com.kitchen.order.dto.request.OrderDiscountRequest;
 import com.kitchen.order.dto.request.UpdateOrderStatusRequest;
 import com.kitchen.order.dto.response.OrderItemResponse;
 import com.kitchen.order.dto.response.OrderResponse;
@@ -209,6 +210,43 @@ public class OrderController {
     public SseEmitter streamOrderUpdates(
             @Parameter(description = "Order ID") @PathVariable Long id) {
         return streamService.subscribeToOrder(id);
+    }
+
+    // ── PUT /orders/{id}/discount ─────────────────────────────────────────────
+
+    @Operation(
+            summary = "Apply or update order-level discount",
+            description = "Applies or updates an order-level discount (PERCENTAGE or FIXED) on an active unpaid order and recalculates total amounts."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Discount applied successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid discount parameters or order is in non-modifiable state"),
+            @ApiResponse(responseCode = "404", description = "Order not found")
+    })
+    @PutMapping(value = "/{id}/discount",
+            produces = MediaType.APPLICATION_JSON_VALUE,
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<OrderResponse> applyOrderDiscount(
+            @Parameter(description = "Order ID") @PathVariable Long id,
+            @Valid @RequestBody OrderDiscountRequest request) {
+        return ResponseEntity.ok(orderService.applyOrderDiscount(id, request));
+    }
+
+    // ── DELETE /orders/{id}/discount ──────────────────────────────────────────
+
+    @Operation(
+            summary = "Remove order-level discount",
+            description = "Removes the order-level discount from an active unpaid order and recalculates total amounts."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Discount removed successfully"),
+            @ApiResponse(responseCode = "400", description = "Order is in non-modifiable state"),
+            @ApiResponse(responseCode = "404", description = "Order not found")
+    })
+    @DeleteMapping(value = "/{id}/discount", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<OrderResponse> removeOrderDiscount(
+            @Parameter(description = "Order ID") @PathVariable Long id) {
+        return ResponseEntity.ok(orderService.removeOrderDiscount(id));
     }
 
     // ── GET /orders/restaurant/{restaurantId}/stream (staff dashboard stream) ──

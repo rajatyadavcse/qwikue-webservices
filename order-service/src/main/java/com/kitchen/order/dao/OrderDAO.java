@@ -4,6 +4,7 @@ import com.kitchen.order.enums.OrderStatus;
 import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.enums.OrderType;
+import com.kitchen.order.enums.DiscountType;
 import com.kitchen.order.dto.response.OrderAppliedCharge;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -64,6 +65,19 @@ public class OrderDAO {
 
     @Column(name = "discount_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal discountAmount = BigDecimal.ZERO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_discount_type", length = 20)
+    private DiscountType orderDiscountType;
+
+    @Column(name = "order_discount_rate", precision = 10, scale = 2)
+    private BigDecimal orderDiscountRate;
+
+    @Column(name = "order_discount_amount", precision = 10, scale = 2)
+    private BigDecimal orderDiscountAmount = BigDecimal.ZERO;
+
+    @Column(name = "order_discount_reason", length = 255)
+    private String orderDiscountReason;
 
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;

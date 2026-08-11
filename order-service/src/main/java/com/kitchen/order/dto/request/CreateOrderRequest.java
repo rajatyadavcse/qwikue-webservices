@@ -39,4 +39,7 @@ public class CreateOrderRequest {
     private PaymentMode paymentMode = PaymentMode.CASH;
 
     private OrderedBy orderedBy = OrderedBy.CUSTOMER;
+
+    @Valid
+    private OrderDiscountRequest discount;
 }

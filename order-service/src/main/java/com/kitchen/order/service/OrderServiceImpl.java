@@ -3,6 +3,7 @@ package com.kitchen.order.service;
 import com.kitchen.order.dao.OrderDAO;
 import com.kitchen.order.dao.OrderItemDAO;
 import com.kitchen.order.dto.request.CreateOrderRequest;
+import com.kitchen.order.dto.request.OrderDiscountRequest;
 import com.kitchen.order.dto.request.OrderItemRequest;
 import com.kitchen.order.dto.request.UpdateOrderStatusRequest;
 import com.kitchen.order.dto.response.OrderItemResponse;
@@ -15,6 +16,7 @@ import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.enums.OrderedBy;
 import com.kitchen.order.enums.OrderType;
+import com.kitchen.order.enums.DiscountType;
 import com.kitchen.order.exception.InvalidStatusTransitionException;
 import com.kitchen.order.exception.ResourceNotFoundException;
 import com.kitchen.order.exception.ExternalServiceException;
@@ -183,51 +185,8 @@ public class OrderServiceImpl implements IOrderService {
             subTotal = subTotal.add(itemTotal);
         }
 
-        order.setSubTotal(subTotal);
-
-        // Calculate dynamic taxes, service charges, and discounts
-        BigDecimal taxAmount = BigDecimal.ZERO;
-        BigDecimal serviceChargeAmount = BigDecimal.ZERO;
-        BigDecimal discountAmount = BigDecimal.ZERO;
-        List<OrderAppliedCharge> appliedCharges = new ArrayList<>();
-
-        if (restaurant.getTaxesAndCharges() != null) {
-            for (RestaurantChargeDto charge : restaurant.getTaxesAndCharges()) {
-                BigDecimal amount = BigDecimal.ZERO;
-                if ("PERCENTAGE".equalsIgnoreCase(charge.getType())) {
-                    amount = subTotal.multiply(charge.getValue()).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
-                } else if ("FIXED".equalsIgnoreCase(charge.getType())) {
-                    amount = charge.getValue();
-                }
-
-                if ("TAX".equalsIgnoreCase(charge.getCategory())) {
-                    taxAmount = taxAmount.add(amount);
-                } else if ("SERVICE_CHARGE".equalsIgnoreCase(charge.getCategory())) {
-                    serviceChargeAmount = serviceChargeAmount.add(amount);
-                } else if ("DISCOUNT".equalsIgnoreCase(charge.getCategory())) {
-                    discountAmount = discountAmount.add(amount);
-                }
-
-                OrderAppliedCharge applied = new OrderAppliedCharge();
-                applied.setName(charge.getName());
-                applied.setType(charge.getType());
-                applied.setAppliedRate(charge.getValue());
-                applied.setCalculatedAmount(amount);
-                applied.setCategory(charge.getCategory());
-                appliedCharges.add(applied);
-            }
-        }
-
-        order.setTaxAmount(taxAmount);
-        order.setServiceChargeAmount(serviceChargeAmount);
-        order.setDiscountAmount(discountAmount);
-        order.setTaxesAndCharges(appliedCharges);
-
-        BigDecimal totalPayable = subTotal.add(taxAmount).add(serviceChargeAmount).subtract(discountAmount);
-        if (totalPayable.compareTo(BigDecimal.ZERO) < 0) {
-            totalPayable = BigDecimal.ZERO;
-        }
-        order.setTotalAmount(totalPayable);
+        // Calculate dynamic taxes, service charges, and discounts (including order-level discount)
+        calculateOrderPricing(order, restaurant.getTaxesAndCharges(), request.getDiscount());
 
         if (order.getPaymentMode() == PaymentMode.CASH) {
             // Generate daily token number for the restaurant (Asia/Kolkata timezone matching jackson timezone)
@@ -524,7 +483,189 @@ public class OrderServiceImpl implements IOrderService {
                 .orElse(null);
     }
 
+    @Override
+    public OrderResponse applyOrderDiscount(Long orderId, OrderDiscountRequest request) {
+        log.info("Applying order-level discount for orderId={}: type={}, value={}, reason={}",
+                orderId, request.getType(), request.getValue(), request.getReason());
+
+        OrderDAO order = findOrderById(orderId);
+
+        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
+            throw new IllegalArgumentException("Cannot modify discount for an order with status: " + order.getStatus());
+        }
+
+        if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
+            throw new IllegalArgumentException("Cannot modify discount for an order whose payment is already COMPLETED");
+        }
+
+        RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(order.getRestaurantId());
+
+        calculateOrderPricing(order, restaurant.getTaxesAndCharges(), request);
+
+        // If payment is ONLINE and status is PAYMENT_PENDING, re-create Razorpay order with updated amount
+        if (order.getPaymentMode() == PaymentMode.ONLINE && order.getPaymentStatus() == PaymentStatus.PENDING) {
+            try {
+                String razorpayOrderId = paymentService.createOrder(
+                        order.getOrderId(),
+                        order.getTotalAmount(),
+                        restaurant.getRazorpayKeyId(),
+                        restaurant.getRazorpayKeySecret()
+                );
+                order.setRazorpayOrderId(razorpayOrderId);
+            } catch (Exception e) {
+                log.error("Failed to re-create Razorpay Order for orderId={}: {}", order.getOrderId(), e.getMessage());
+                throw new ExternalServiceException("Payment gateway integration failed: " + e.getMessage(), e);
+            }
+        }
+
+        OrderDAO saved = orderRepository.save(order);
+        log.info("Order-level discount applied successfully for orderId={}, new totalAmount={}", saved.getOrderId(), saved.getTotalAmount());
+
+        OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
+        if (saved.getPaymentMode() == PaymentMode.ONLINE) {
+            response.setRazorpayKeyId(restaurant.getRazorpayKeyId());
+        }
+        eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
+        return response;
+    }
+
+    @Override
+    public OrderResponse removeOrderDiscount(Long orderId) {
+        log.info("Removing order-level discount for orderId={}", orderId);
+
+        OrderDAO order = findOrderById(orderId);
+
+        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
+            throw new IllegalArgumentException("Cannot modify discount for an order with status: " + order.getStatus());
+        }
+
+        if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
+            throw new IllegalArgumentException("Cannot modify discount for an order whose payment is already COMPLETED");
+        }
+
+        RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(order.getRestaurantId());
+
+        calculateOrderPricing(order, restaurant.getTaxesAndCharges(), null);
+
+        // If payment is ONLINE and status is PAYMENT_PENDING, re-create Razorpay order with updated amount
+        if (order.getPaymentMode() == PaymentMode.ONLINE && order.getPaymentStatus() == PaymentStatus.PENDING) {
+            try {
+                String razorpayOrderId = paymentService.createOrder(
+                        order.getOrderId(),
+                        order.getTotalAmount(),
+                        restaurant.getRazorpayKeyId(),
+                        restaurant.getRazorpayKeySecret()
+                );
+                order.setRazorpayOrderId(razorpayOrderId);
+            } catch (Exception e) {
+                log.error("Failed to re-create Razorpay Order for orderId={}: {}", order.getOrderId(), e.getMessage());
+                throw new ExternalServiceException("Payment gateway integration failed: " + e.getMessage(), e);
+            }
+        }
+
+        OrderDAO saved = orderRepository.save(order);
+        log.info("Order-level discount removed successfully for orderId={}, new totalAmount={}", saved.getOrderId(), saved.getTotalAmount());
+
+        OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
+        if (saved.getPaymentMode() == PaymentMode.ONLINE) {
+            response.setRazorpayKeyId(restaurant.getRazorpayKeyId());
+        }
+        eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
+        return response;
+    }
+
     // ── Private helpers ────────────────────────────────────────────────────────
+
+    private void calculateOrderPricing(OrderDAO order, List<RestaurantChargeDto> restaurantCharges, OrderDiscountRequest orderDiscount) {
+        BigDecimal subTotal = order.getItems().stream()
+                .map(OrderItemDAO::getTotalItemPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        order.setSubTotal(subTotal);
+
+        BigDecimal taxAmount = BigDecimal.ZERO;
+        BigDecimal serviceChargeAmount = BigDecimal.ZERO;
+        BigDecimal restaurantDiscountAmount = BigDecimal.ZERO;
+        List<OrderAppliedCharge> appliedCharges = new ArrayList<>();
+
+        if (restaurantCharges != null) {
+            for (RestaurantChargeDto charge : restaurantCharges) {
+                BigDecimal amount = BigDecimal.ZERO;
+                if ("PERCENTAGE".equalsIgnoreCase(charge.getType())) {
+                    amount = subTotal.multiply(charge.getValue()).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+                } else if ("FIXED".equalsIgnoreCase(charge.getType())) {
+                    amount = charge.getValue();
+                }
+
+                if ("TAX".equalsIgnoreCase(charge.getCategory())) {
+                    taxAmount = taxAmount.add(amount);
+                } else if ("SERVICE_CHARGE".equalsIgnoreCase(charge.getCategory())) {
+                    serviceChargeAmount = serviceChargeAmount.add(amount);
+                } else if ("DISCOUNT".equalsIgnoreCase(charge.getCategory())) {
+                    restaurantDiscountAmount = restaurantDiscountAmount.add(amount);
+                }
+
+                OrderAppliedCharge applied = new OrderAppliedCharge();
+                applied.setName(charge.getName());
+                applied.setType(charge.getType());
+                applied.setAppliedRate(charge.getValue());
+                applied.setCalculatedAmount(amount);
+                applied.setCategory(charge.getCategory());
+                appliedCharges.add(applied);
+            }
+        }
+
+        // Process order-level discount
+        BigDecimal orderDiscountAmount = BigDecimal.ZERO;
+        if (orderDiscount != null && orderDiscount.getType() != null && orderDiscount.getValue() != null) {
+            if (orderDiscount.getValue().compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException("Discount value cannot be negative");
+            }
+            if (orderDiscount.getType() == DiscountType.PERCENTAGE) {
+                if (orderDiscount.getValue().compareTo(BigDecimal.valueOf(100)) > 0) {
+                    throw new IllegalArgumentException("Percentage discount cannot exceed 100%");
+                }
+                orderDiscountAmount = subTotal.multiply(orderDiscount.getValue())
+                        .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+            } else if (orderDiscount.getType() == DiscountType.FIXED) {
+                orderDiscountAmount = orderDiscount.getValue().min(subTotal);
+            }
+
+            order.setOrderDiscountType(orderDiscount.getType());
+            order.setOrderDiscountRate(orderDiscount.getValue());
+            order.setOrderDiscountAmount(orderDiscountAmount);
+            order.setOrderDiscountReason(orderDiscount.getReason());
+
+            String discountName = (orderDiscount.getReason() != null && !orderDiscount.getReason().isBlank())
+                    ? orderDiscount.getReason()
+                    : "Order Discount";
+
+            OrderAppliedCharge orderDiscountApplied = new OrderAppliedCharge();
+            orderDiscountApplied.setName(discountName);
+            orderDiscountApplied.setType(orderDiscount.getType().name());
+            orderDiscountApplied.setAppliedRate(orderDiscount.getValue());
+            orderDiscountApplied.setCalculatedAmount(orderDiscountAmount);
+            orderDiscountApplied.setCategory("ORDER_DISCOUNT");
+            appliedCharges.add(orderDiscountApplied);
+        } else {
+            order.setOrderDiscountType(null);
+            order.setOrderDiscountRate(null);
+            order.setOrderDiscountAmount(BigDecimal.ZERO);
+            order.setOrderDiscountReason(null);
+        }
+
+        BigDecimal totalDiscountAmount = restaurantDiscountAmount.add(orderDiscountAmount);
+
+        order.setTaxAmount(taxAmount);
+        order.setServiceChargeAmount(serviceChargeAmount);
+        order.setDiscountAmount(totalDiscountAmount);
+        order.setTaxesAndCharges(appliedCharges);
+
+        BigDecimal totalPayable = subTotal.add(taxAmount).add(serviceChargeAmount).subtract(totalDiscountAmount);
+        if (totalPayable.compareTo(BigDecimal.ZERO) < 0) {
+            totalPayable = BigDecimal.ZERO;
+        }
+        order.setTotalAmount(totalPayable);
+    }
 
     private void releaseEntityIfNoActiveOrders(OrderDAO order) {
         if (order.getOrderType() == OrderType.DINE_IN && order.getEntityNo() != null && !order.getEntityNo().trim().isEmpty()) {

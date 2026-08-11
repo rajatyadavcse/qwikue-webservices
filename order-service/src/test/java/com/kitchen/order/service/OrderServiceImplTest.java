@@ -1,10 +1,13 @@
 package com.kitchen.order.service;
 
 import com.kitchen.order.dao.OrderDAO;
+import com.kitchen.order.dao.OrderItemDAO;
 import com.kitchen.order.dto.request.CreateOrderRequest;
+import com.kitchen.order.dto.request.OrderDiscountRequest;
 import com.kitchen.order.dto.request.OrderItemRequest;
 import com.kitchen.order.dto.response.OrderResponse;
 import com.kitchen.order.dto.response.RestaurantChargeDto;
+import com.kitchen.order.enums.DiscountType;
 import com.kitchen.order.enums.OrderStatus;
 import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
@@ -1077,5 +1080,374 @@ public class OrderServiceImplTest {
         assertNull(orderService.getCurrentOrderByEntity(1L, "   "));
         verifyNoInteractions(orderRepository);
     }
+
+    // ── Order Discount Tests ───────────────────────────────────────────────────
+
+    @Test
+    public void testCreateOrderWithPercentageOrderDiscount() {
+        // Arrange
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setRestaurantId(1L);
+        request.setEntityNo("10");
+        request.setPaymentMode(PaymentMode.CASH);
+        request.setCustomerName("Jane Doe");
+
+        OrderItemRequest itemRequest = new OrderItemRequest();
+        itemRequest.setMenuId(101L);
+        itemRequest.setQuantity(2);
+        request.setItems(Collections.singletonList(itemRequest));
+
+        // 10% order discount
+        request.setDiscount(new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("10.0"), "Loyalty Member"));
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        restaurant.setRestaurantName("Tasty Restaurant");
+        restaurant.setStatus("ACTIVE");
+
+        List<RestaurantChargeDto> charges = new ArrayList<>();
+        charges.add(new RestaurantChargeDto("CGST", "PERCENTAGE", new BigDecimal("2.5"), "TAX"));
+        charges.add(new RestaurantChargeDto("SGST", "PERCENTAGE", new BigDecimal("2.5"), "TAX"));
+        charges.add(new RestaurantChargeDto("Service Charge", "PERCENTAGE", new BigDecimal("10.0"), "SERVICE_CHARGE"));
+        restaurant.setTaxesAndCharges(charges);
+
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        RestaurantValidationService.EntityResponse entity = new RestaurantValidationService.EntityResponse();
+        entity.setEntityNo("10");
+        entity.setRestaurantId(1L);
+        entity.setStatus("ACTIVE");
+        entity.setOrderEntityType("DINE_IN");
+        when(validationService.validateEntity("10", 1L)).thenReturn(entity);
+
+        RestaurantValidationService.MenuResponse menu = new RestaurantValidationService.MenuResponse();
+        menu.setMenuId(101L);
+        menu.setItemName("Pizza");
+        menu.setPrice(new BigDecimal("50.00"));
+        menu.setIsAvailable(true);
+        when(validationService.validateMenuAndGetPrice(101L)).thenReturn(menu);
+
+        when(customerRepository.save(any(CustomerDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tokenCounterRepository.getNextTokenNo(eq(1L), any(LocalDate.class))).thenReturn(1);
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO order = invocation.getArgument(0);
+            order.setOrderId(101L);
+            return order;
+        });
+
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            OrderResponse resp = new OrderResponse();
+            resp.setOrderId(dao.getOrderId());
+            resp.setSubTotal(dao.getSubTotal());
+            resp.setTaxAmount(dao.getTaxAmount());
+            resp.setServiceChargeAmount(dao.getServiceChargeAmount());
+            resp.setDiscountAmount(dao.getDiscountAmount());
+            resp.setOrderDiscountType(dao.getOrderDiscountType());
+            resp.setOrderDiscountRate(dao.getOrderDiscountRate());
+            resp.setOrderDiscountAmount(dao.getOrderDiscountAmount());
+            resp.setOrderDiscountReason(dao.getOrderDiscountReason());
+            resp.setTotalAmount(dao.getTotalAmount());
+            resp.setTaxesAndCharges(dao.getTaxesAndCharges());
+            return resp;
+        });
+
+        // Act
+        OrderResponse response = orderService.createOrder(request);
+
+        // Assert
+        // subTotal = 100.00, Tax = 5.00, Service Charge = 10.00
+        // Order discount 10% = 10.00
+        // totalPayable = 100.00 + 5.00 + 10.00 - 10.00 = 105.00
+        assertEquals(new BigDecimal("100.00"), response.getSubTotal());
+        assertEquals(new BigDecimal("5.00"), response.getTaxAmount());
+        assertEquals(new BigDecimal("10.00"), response.getServiceChargeAmount());
+        assertEquals(new BigDecimal("10.00"), response.getDiscountAmount());
+        assertEquals(DiscountType.PERCENTAGE, response.getOrderDiscountType());
+        assertEquals(new BigDecimal("10.0"), response.getOrderDiscountRate());
+        assertEquals(new BigDecimal("10.00"), response.getOrderDiscountAmount());
+        assertEquals("Loyalty Member", response.getOrderDiscountReason());
+        assertEquals(new BigDecimal("105.00"), response.getTotalAmount());
+
+        // 3 restaurant charges + 1 order discount = 4 entries
+        assertEquals(4, response.getTaxesAndCharges().size());
+        assertEquals("Loyalty Member", response.getTaxesAndCharges().get(3).getName());
+        assertEquals("ORDER_DISCOUNT", response.getTaxesAndCharges().get(3).getCategory());
+        assertEquals(new BigDecimal("10.00"), response.getTaxesAndCharges().get(3).getCalculatedAmount());
+    }
+
+    @Test
+    public void testCreateOrderWithFixedOrderDiscount() {
+        // Arrange
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setRestaurantId(1L);
+        request.setEntityNo("10");
+        request.setPaymentMode(PaymentMode.CASH);
+        request.setCustomerName("Jane Doe");
+
+        OrderItemRequest itemRequest = new OrderItemRequest();
+        itemRequest.setMenuId(101L);
+        itemRequest.setQuantity(2);
+        request.setItems(Collections.singletonList(itemRequest));
+
+        // Fixed $25 order discount
+        request.setDiscount(new OrderDiscountRequest(DiscountType.FIXED, new BigDecimal("25.00"), "Coupon25"));
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        restaurant.setRestaurantName("Tasty Restaurant");
+        restaurant.setStatus("ACTIVE");
+        restaurant.setTaxesAndCharges(Collections.emptyList());
+
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        RestaurantValidationService.EntityResponse entity = new RestaurantValidationService.EntityResponse();
+        entity.setEntityNo("10");
+        entity.setRestaurantId(1L);
+        entity.setStatus("ACTIVE");
+        entity.setOrderEntityType("DINE_IN");
+        when(validationService.validateEntity("10", 1L)).thenReturn(entity);
+
+        RestaurantValidationService.MenuResponse menu = new RestaurantValidationService.MenuResponse();
+        menu.setMenuId(101L);
+        menu.setItemName("Pizza");
+        menu.setPrice(new BigDecimal("50.00"));
+        menu.setIsAvailable(true);
+        when(validationService.validateMenuAndGetPrice(101L)).thenReturn(menu);
+
+        when(customerRepository.save(any(CustomerDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tokenCounterRepository.getNextTokenNo(eq(1L), any(LocalDate.class))).thenReturn(1);
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            OrderResponse resp = new OrderResponse();
+            resp.setSubTotal(dao.getSubTotal());
+            resp.setDiscountAmount(dao.getDiscountAmount());
+            resp.setOrderDiscountType(dao.getOrderDiscountType());
+            resp.setOrderDiscountAmount(dao.getOrderDiscountAmount());
+            resp.setOrderDiscountReason(dao.getOrderDiscountReason());
+            resp.setTotalAmount(dao.getTotalAmount());
+            resp.setTaxesAndCharges(dao.getTaxesAndCharges());
+            return resp;
+        });
+
+        // Act
+        OrderResponse response = orderService.createOrder(request);
+
+        // Assert
+        // subTotal = 100.00, discount = 25.00, total = 75.00
+        assertEquals(new BigDecimal("100.00"), response.getSubTotal());
+        assertEquals(new BigDecimal("25.00"), response.getDiscountAmount());
+        assertEquals(DiscountType.FIXED, response.getOrderDiscountType());
+        assertEquals(new BigDecimal("25.00"), response.getOrderDiscountAmount());
+        assertEquals(new BigDecimal("75.00"), response.getTotalAmount());
+    }
+
+    @Test
+    public void testCreateOrderWithCombinedRestaurantAndOrderDiscount() {
+        // Arrange
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setRestaurantId(1L);
+        request.setEntityNo("10");
+        request.setPaymentMode(PaymentMode.CASH);
+        request.setCustomerName("Jane Doe");
+
+        OrderItemRequest itemRequest = new OrderItemRequest();
+        itemRequest.setMenuId(101L);
+        itemRequest.setQuantity(2);
+        request.setItems(Collections.singletonList(itemRequest));
+
+        // Order discount: 10%
+        request.setDiscount(new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("10.0"), "Manager Discount"));
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        restaurant.setRestaurantName("Tasty Restaurant");
+        restaurant.setStatus("ACTIVE");
+
+        // Restaurant-level discount: Fixed $15.00
+        List<RestaurantChargeDto> charges = new ArrayList<>();
+        charges.add(new RestaurantChargeDto("Restaurant Promo", "FIXED", new BigDecimal("15.00"), "DISCOUNT"));
+        restaurant.setTaxesAndCharges(charges);
+
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        RestaurantValidationService.EntityResponse entity = new RestaurantValidationService.EntityResponse();
+        entity.setEntityNo("10");
+        entity.setRestaurantId(1L);
+        entity.setStatus("ACTIVE");
+        entity.setOrderEntityType("DINE_IN");
+        when(validationService.validateEntity("10", 1L)).thenReturn(entity);
+
+        RestaurantValidationService.MenuResponse menu = new RestaurantValidationService.MenuResponse();
+        menu.setMenuId(101L);
+        menu.setItemName("Pizza");
+        menu.setPrice(new BigDecimal("50.00"));
+        menu.setIsAvailable(true);
+        when(validationService.validateMenuAndGetPrice(101L)).thenReturn(menu);
+
+        when(customerRepository.save(any(CustomerDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tokenCounterRepository.getNextTokenNo(eq(1L), any(LocalDate.class))).thenReturn(1);
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            OrderResponse resp = new OrderResponse();
+            resp.setSubTotal(dao.getSubTotal());
+            resp.setDiscountAmount(dao.getDiscountAmount());
+            resp.setOrderDiscountAmount(dao.getOrderDiscountAmount());
+            resp.setTotalAmount(dao.getTotalAmount());
+            resp.setTaxesAndCharges(dao.getTaxesAndCharges());
+            return resp;
+        });
+
+        // Act
+        OrderResponse response = orderService.createOrder(request);
+
+        // Assert
+        // subTotal = 100.00
+        // Restaurant discount = 15.00, Order discount = 10.00 => Total discount = 25.00
+        // totalPayable = 100.00 - 25.00 = 75.00
+        assertEquals(new BigDecimal("100.00"), response.getSubTotal());
+        assertEquals(new BigDecimal("25.00"), response.getDiscountAmount());
+        assertEquals(new BigDecimal("10.00"), response.getOrderDiscountAmount());
+        assertEquals(new BigDecimal("75.00"), response.getTotalAmount());
+        assertEquals(2, response.getTaxesAndCharges().size());
+    }
+
+    @Test
+    public void testApplyOrderDiscountOnExistingActiveOrder() {
+        // Arrange
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(10L);
+        order.setRestaurantId(1L);
+        order.setStatus(OrderStatus.PREPARING);
+        order.setPaymentStatus(PaymentStatus.PENDING);
+        order.setPaymentMode(PaymentMode.CASH);
+
+        OrderItemDAO item = new OrderItemDAO();
+        item.setItemName("Burger");
+        item.setQuantity(2);
+        item.setUnitPrice(new BigDecimal("50.00"));
+        item.setTotalItemPrice(new BigDecimal("100.00"));
+        item.setOrder(order);
+        order.setItems(new ArrayList<>(List.of(item)));
+
+        when(orderRepository.findById(10L)).thenReturn(Optional.of(order));
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        restaurant.setTaxesAndCharges(Collections.emptyList());
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            OrderResponse resp = new OrderResponse();
+            resp.setOrderId(dao.getOrderId());
+            resp.setSubTotal(dao.getSubTotal());
+            resp.setDiscountAmount(dao.getDiscountAmount());
+            resp.setOrderDiscountType(dao.getOrderDiscountType());
+            resp.setOrderDiscountRate(dao.getOrderDiscountRate());
+            resp.setOrderDiscountAmount(dao.getOrderDiscountAmount());
+            resp.setOrderDiscountReason(dao.getOrderDiscountReason());
+            resp.setTotalAmount(dao.getTotalAmount());
+            return resp;
+        });
+
+        // Act
+        OrderDiscountRequest discountReq = new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("20.0"), "Staff Promo");
+        OrderResponse response = orderService.applyOrderDiscount(10L, discountReq);
+
+        // Assert
+        assertEquals(new BigDecimal("100.00"), response.getSubTotal());
+        assertEquals(new BigDecimal("20.00"), response.getDiscountAmount());
+        assertEquals(DiscountType.PERCENTAGE, response.getOrderDiscountType());
+        assertEquals(new BigDecimal("20.0"), response.getOrderDiscountRate());
+        assertEquals(new BigDecimal("20.00"), response.getOrderDiscountAmount());
+        assertEquals("Staff Promo", response.getOrderDiscountReason());
+        assertEquals(new BigDecimal("80.00"), response.getTotalAmount());
+
+        verify(eventPublisher, times(1)).publishEvent(any());
+    }
+
+    @Test
+    public void testRemoveOrderDiscount() {
+        // Arrange
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(10L);
+        order.setRestaurantId(1L);
+        order.setStatus(OrderStatus.PREPARING);
+        order.setPaymentStatus(PaymentStatus.PENDING);
+        order.setPaymentMode(PaymentMode.CASH);
+        order.setOrderDiscountType(DiscountType.FIXED);
+        order.setOrderDiscountRate(new BigDecimal("20.00"));
+        order.setOrderDiscountAmount(new BigDecimal("20.00"));
+        order.setOrderDiscountReason("Old Discount");
+
+        OrderItemDAO item = new OrderItemDAO();
+        item.setItemName("Burger");
+        item.setQuantity(2);
+        item.setUnitPrice(new BigDecimal("50.00"));
+        item.setTotalItemPrice(new BigDecimal("100.00"));
+        item.setOrder(order);
+        order.setItems(new ArrayList<>(List.of(item)));
+
+        when(orderRepository.findById(10L)).thenReturn(Optional.of(order));
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        restaurant.setTaxesAndCharges(Collections.emptyList());
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            OrderResponse resp = new OrderResponse();
+            resp.setOrderId(dao.getOrderId());
+            resp.setSubTotal(dao.getSubTotal());
+            resp.setDiscountAmount(dao.getDiscountAmount());
+            resp.setOrderDiscountAmount(dao.getOrderDiscountAmount());
+            resp.setTotalAmount(dao.getTotalAmount());
+            return resp;
+        });
+
+        // Act
+        OrderResponse response = orderService.removeOrderDiscount(10L);
+
+        // Assert
+        assertEquals(new BigDecimal("100.00"), response.getSubTotal());
+        assertEquals(BigDecimal.ZERO, response.getDiscountAmount());
+        assertEquals(BigDecimal.ZERO, response.getOrderDiscountAmount());
+        assertEquals(new BigDecimal("100.00"), response.getTotalAmount());
+
+        verify(eventPublisher, times(1)).publishEvent(any());
+    }
+
+    @Test
+    public void testApplyOrderDiscountOnCompletedOrderFails() {
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(10L);
+        order.setStatus(OrderStatus.COMPLETED);
+        order.setPaymentStatus(PaymentStatus.COMPLETED);
+        when(orderRepository.findById(10L)).thenReturn(Optional.of(order));
+
+        OrderDiscountRequest discountReq = new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("10.0"), "Promo");
+        assertThrows(IllegalArgumentException.class, () -> orderService.applyOrderDiscount(10L, discountReq));
+    }
+
+    @Test
+    public void testApplyOrderDiscountOnPaidOrderFails() {
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(10L);
+        order.setStatus(OrderStatus.PREPARING);
+        order.setPaymentStatus(PaymentStatus.COMPLETED);
+        when(orderRepository.findById(10L)).thenReturn(Optional.of(order));
+
+        OrderDiscountRequest discountReq = new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("10.0"), "Promo");
+        assertThrows(IllegalArgumentException.class, () -> orderService.applyOrderDiscount(10L, discountReq));
+    }
 }
+
 

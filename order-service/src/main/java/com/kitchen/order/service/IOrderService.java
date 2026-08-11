@@ -1,6 +1,7 @@
 package com.kitchen.order.service;
 
 import com.kitchen.order.dto.request.CreateOrderRequest;
+import com.kitchen.order.dto.request.OrderDiscountRequest;
 import com.kitchen.order.dto.request.UpdateOrderStatusRequest;
 import com.kitchen.order.dto.response.OrderItemResponse;
 import com.kitchen.order.dto.response.OrderResponse;
@@ -66,5 +67,16 @@ public interface IOrderService {
      * Returns null if no active order is found.
      */
     OrderResponse getCurrentOrderByEntity(Long restaurantId, String entityNo);
+
+    /**
+     * Applies or updates an order-level discount on an existing order and recalculates totals.
+     */
+    OrderResponse applyOrderDiscount(Long orderId, OrderDiscountRequest request);
+
+    /**
+     * Removes an order-level discount from an existing order and recalculates totals.
+     */
+    OrderResponse removeOrderDiscount(Long orderId);
 }
+
 
