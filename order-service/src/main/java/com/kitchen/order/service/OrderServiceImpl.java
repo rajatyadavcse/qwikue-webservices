@@ -5,6 +5,7 @@ import com.kitchen.order.dao.OrderItemDAO;
 import com.kitchen.order.dto.request.CreateOrderRequest;
 import com.kitchen.order.dto.request.OrderDiscountRequest;
 import com.kitchen.order.dto.request.OrderItemRequest;
+import com.kitchen.order.dto.request.UpdateOrderRequest;
 import com.kitchen.order.dto.request.UpdateOrderStatusRequest;
 import com.kitchen.order.dto.response.OrderItemResponse;
 import com.kitchen.order.dto.response.OrderResponse;
@@ -595,6 +596,173 @@ public class OrderServiceImpl implements IOrderService {
         return response;
     }
 
+    @Override
+    public OrderResponse updateOrder(Long orderId, UpdateOrderRequest request) {
+        log.info("Updating order orderId={}", orderId);
+
+        OrderDAO order = findOrderById(orderId);
+
+        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
+            throw new IllegalArgumentException("Cannot update order with status: " + order.getStatus());
+        }
+
+        RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(order.getRestaurantId());
+
+        String oldEntityNo = order.getEntityNo();
+        OrderType oldOrderType = order.getOrderType();
+
+        // 1. Update orderType if specified
+        if (request.getOrderType() != null) {
+            order.setOrderType(request.getOrderType());
+        }
+
+        // 2. Update entityNo if specified or if orderType changed
+        if (request.getEntityNo() != null) {
+            String newEntityNo = request.getEntityNo().trim();
+            if (order.getOrderType() == OrderType.DINE_IN) {
+                if (newEntityNo.isEmpty()) {
+                    throw new IllegalArgumentException("entityNo is required for DINE_IN orders");
+                }
+                RestaurantValidationService.EntityResponse entity = validationService.validateEntity(newEntityNo, order.getRestaurantId());
+                order.setEntityNo(newEntityNo);
+                order.setOrderEntityType(entity != null ? entity.getOrderEntityType() : null);
+            } else {
+                order.setEntityNo(newEntityNo.isEmpty() ? null : newEntityNo);
+                order.setOrderEntityType(null);
+            }
+        } else if (request.getOrderType() != null && request.getOrderType() == OrderType.TAKE_AWAY) {
+            order.setOrderEntityType(null);
+        }
+
+        // Manage table status changes if entity or orderType changed
+        boolean entityChanged = (oldOrderType != order.getOrderType())
+                || (oldEntityNo == null ? order.getEntityNo() != null : !oldEntityNo.equals(order.getEntityNo()));
+
+        if (entityChanged) {
+            if (order.getOrderType() == OrderType.DINE_IN && order.getEntityNo() != null && !order.getEntityNo().trim().isEmpty()) {
+                validationService.updateEntityStatus(order.getEntityNo().trim(), order.getRestaurantId(), com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
+            }
+            if (oldOrderType == OrderType.DINE_IN && oldEntityNo != null && !oldEntityNo.trim().isEmpty()) {
+                releaseEntityIfNoActiveOrders(oldEntityNo, order.getRestaurantId(), order.getOrderId());
+            }
+        }
+
+        // 3. Update customer info if provided
+        if (request.getCustomerName() != null || request.getPhone() != null) {
+            CustomerDAO customer = order.getCustomer();
+            if (customer == null) {
+                customer = new CustomerDAO();
+            }
+            if (request.getCustomerName() != null && !request.getCustomerName().trim().isEmpty()) {
+                customer.setCustomerName(request.getCustomerName().trim());
+            }
+            if (request.getPhone() != null) {
+                customer.setPhone(request.getPhone().trim().isEmpty() ? null : request.getPhone().trim());
+            }
+            customer = customerRepository.save(customer);
+            order.setCustomer(customer);
+        }
+
+        // 4. Update notes if provided
+        if (request.getNotes() != null) {
+            order.setNotes(request.getNotes());
+        }
+
+        // 5. Update paymentMode if provided
+        if (request.getPaymentMode() != null && request.getPaymentMode() != order.getPaymentMode()) {
+            if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
+                throw new IllegalArgumentException("Cannot change payment mode for an order whose payment is already COMPLETED");
+            }
+            PaymentMode newPaymentMode = request.getPaymentMode();
+            if (restaurant.getPaymentModes() != null && !restaurant.getPaymentModes().isEmpty()
+                    && !restaurant.getPaymentModes().contains(newPaymentMode)) {
+                throw new IllegalArgumentException("Payment mode " + newPaymentMode + " is not supported by this restaurant");
+            }
+            order.setPaymentMode(newPaymentMode);
+            if (newPaymentMode == PaymentMode.CASH && order.getStatus() == OrderStatus.PAYMENT_PENDING) {
+                order.setStatus(OrderStatus.PENDING);
+                if (order.getTokenNo() == null) {
+                    java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
+                    int tokenNo = tokenCounterRepository.getNextTokenNo(order.getRestaurantId(), today);
+                    order.setTokenNo(tokenNo);
+                }
+            } else if (newPaymentMode == PaymentMode.ONLINE && order.getStatus() == OrderStatus.PENDING && order.getPaymentStatus() == PaymentStatus.PENDING) {
+                order.setStatus(OrderStatus.PAYMENT_PENDING);
+            }
+        }
+
+        // 6. Update items / recalculate pricing
+        boolean pricingChanged = false;
+        if (request.getItems() != null) {
+            if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
+                throw new IllegalArgumentException("Cannot modify items for an order whose payment is already COMPLETED");
+            }
+            if (request.getItems().isEmpty()) {
+                throw new IllegalArgumentException("Order must contain at least one item");
+            }
+
+            order.getItems().clear();
+            for (OrderItemRequest itemRequest : request.getItems()) {
+                RestaurantValidationService.MenuResponse menu = validationService
+                        .validateMenuAndGetPrice(itemRequest.getMenuId());
+
+                OrderItemDAO item = new OrderItemDAO();
+                item.setMenuId(itemRequest.getMenuId());
+                item.setQuantity(itemRequest.getQuantity());
+                item.setUnitPrice(menu.getPrice());
+                item.setItemName(menu.getItemName());
+
+                BigDecimal itemTotal = menu.getPrice().multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
+                item.setTotalItemPrice(itemTotal);
+
+                item.setOrder(order);
+                order.getItems().add(item);
+            }
+
+            OrderDiscountRequest discountReq = request.getDiscount();
+            if (discountReq == null && order.getOrderDiscountType() != null) {
+                discountReq = new OrderDiscountRequest();
+                discountReq.setType(order.getOrderDiscountType());
+                discountReq.setValue(order.getOrderDiscountRate());
+                discountReq.setReason(order.getOrderDiscountReason());
+            }
+            calculateOrderPricing(order, restaurant.getTaxesAndCharges(), discountReq);
+            pricingChanged = true;
+        } else if (request.getDiscount() != null) {
+            if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
+                throw new IllegalArgumentException("Cannot modify discount for an order whose payment is already COMPLETED");
+            }
+            calculateOrderPricing(order, restaurant.getTaxesAndCharges(), request.getDiscount());
+            pricingChanged = true;
+        }
+
+        // 7. If pricing changed and payment mode is ONLINE with PAYMENT_PENDING, update Razorpay order
+        if (pricingChanged && order.getPaymentMode() == PaymentMode.ONLINE && order.getPaymentStatus() == PaymentStatus.PENDING) {
+            try {
+                String razorpayOrderId = paymentService.createOrder(
+                        order.getOrderId(),
+                        order.getTotalAmount(),
+                        restaurant.getRazorpayKeyId(),
+                        restaurant.getRazorpayKeySecret()
+                );
+                order.setRazorpayOrderId(razorpayOrderId);
+            } catch (Exception e) {
+                log.error("Failed to re-create Razorpay Order for orderId={}: {}", order.getOrderId(), e.getMessage());
+                throw new ExternalServiceException("Payment gateway integration failed: " + e.getMessage(), e);
+            }
+        }
+
+        OrderDAO saved = orderRepository.save(order);
+        log.info("Order {} updated successfully", saved.getOrderId());
+
+        OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
+        if (saved.getPaymentMode() == PaymentMode.ONLINE) {
+            response.setRazorpayKeyId(restaurant.getRazorpayKeyId());
+        }
+        eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
+        return response;
+    }
+
     // ── Private helpers ────────────────────────────────────────────────────────
 
     private void calculateOrderPricing(OrderDAO order, List<RestaurantChargeDto> restaurantCharges, OrderDiscountRequest orderDiscount) {
@@ -689,14 +857,20 @@ public class OrderServiceImpl implements IOrderService {
     }
 
     private void releaseEntityIfNoActiveOrders(OrderDAO order) {
-        if (order.getOrderType() == OrderType.DINE_IN && order.getEntityNo() != null && !order.getEntityNo().trim().isEmpty()) {
+        if (order.getOrderType() == OrderType.DINE_IN) {
+            releaseEntityIfNoActiveOrders(order.getEntityNo(), order.getRestaurantId(), order.getOrderId());
+        }
+    }
+
+    private void releaseEntityIfNoActiveOrders(String entityNo, Long restaurantId, Long excludeOrderId) {
+        if (entityNo != null && !entityNo.trim().isEmpty()) {
             boolean hasOtherActiveOrders = orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(
-                    order.getRestaurantId(),
-                    order.getEntityNo().trim(),
+                    restaurantId,
+                    entityNo.trim(),
                     List.of(OrderStatus.PAYMENT_PENDING, OrderStatus.PENDING, OrderStatus.PREPARING, OrderStatus.READY),
-                    order.getOrderId());
+                    excludeOrderId);
             if (!hasOtherActiveOrders) {
-                validationService.updateEntityStatus(order.getEntityNo().trim(), order.getRestaurantId(), com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
+                validationService.updateEntityStatus(entityNo.trim(), restaurantId, com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
             }
         }
     }

@@ -5,6 +5,7 @@ import com.kitchen.order.dao.OrderItemDAO;
 import com.kitchen.order.dto.request.CreateOrderRequest;
 import com.kitchen.order.dto.request.OrderDiscountRequest;
 import com.kitchen.order.dto.request.OrderItemRequest;
+import com.kitchen.order.dto.request.UpdateOrderRequest;
 import com.kitchen.order.dto.response.OrderResponse;
 import com.kitchen.order.dto.response.RestaurantChargeDto;
 import com.kitchen.order.enums.DiscountType;
@@ -1521,6 +1522,190 @@ public class OrderServiceImplTest {
         OrderDiscountRequest discountReq = new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("10.0"), "Promo");
         assertThrows(IllegalArgumentException.class, () -> orderService.applyOrderDiscount(10L, discountReq));
     }
+
+    @Test
+    public void testUpdateOrderItemsAndRecalculatesTotals() {
+        // Arrange
+        OrderDAO existingOrder = new OrderDAO();
+        existingOrder.setOrderId(200L);
+        existingOrder.setRestaurantId(1L);
+        existingOrder.setStatus(OrderStatus.PENDING);
+        existingOrder.setPaymentStatus(PaymentStatus.PENDING);
+        existingOrder.setPaymentMode(PaymentMode.CASH);
+        existingOrder.setOrderType(OrderType.DINE_IN);
+        existingOrder.setEntityNo("Table-1");
+
+        CustomerDAO customer = new CustomerDAO();
+        customer.setCustomerName("Alice");
+        customer.setPhone("1234567890");
+        existingOrder.setCustomer(customer);
+
+        OrderItemDAO oldItem = new OrderItemDAO();
+        oldItem.setMenuId(101L);
+        oldItem.setQuantity(1);
+        oldItem.setUnitPrice(new BigDecimal("100.00"));
+        oldItem.setTotalItemPrice(new BigDecimal("100.00"));
+        oldItem.setOrder(existingOrder);
+        existingOrder.getItems().add(oldItem);
+
+        when(orderRepository.findById(200L)).thenReturn(Optional.of(existingOrder));
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        restaurant.setRestaurantName("Tasty Restaurant");
+        restaurant.setStatus("ACTIVE");
+        List<RestaurantChargeDto> charges = new ArrayList<>();
+        charges.add(new RestaurantChargeDto("GST", "PERCENTAGE", new BigDecimal("5.0"), "TAX"));
+        restaurant.setTaxesAndCharges(charges);
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        // Mock new menu item
+        RestaurantValidationService.MenuResponse menuResponse = new RestaurantValidationService.MenuResponse();
+        menuResponse.setMenuId(102L);
+        menuResponse.setPrice(new BigDecimal("150.00"));
+        menuResponse.setItemName("Paneer Butter Masala");
+        when(validationService.validateMenuAndGetPrice(102L)).thenReturn(menuResponse);
+
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(inv -> {
+            OrderDAO dao = inv.getArgument(0);
+            OrderResponse resp = new OrderResponse();
+            resp.setOrderId(dao.getOrderId());
+            resp.setSubTotal(dao.getSubTotal());
+            resp.setTaxAmount(dao.getTaxAmount());
+            resp.setTotalAmount(dao.getTotalAmount());
+            return resp;
+        });
+
+        // Act - update items to 2x 102L (2 * 150 = 300)
+        UpdateOrderRequest updateReq = new UpdateOrderRequest();
+        OrderItemRequest newItem = new OrderItemRequest();
+        newItem.setMenuId(102L);
+        newItem.setQuantity(2);
+        updateReq.setItems(List.of(newItem));
+
+        OrderResponse response = orderService.updateOrder(200L, updateReq);
+
+        // Assert: subtotal = 300, 5% tax = 15, total = 315
+        assertNotNull(response);
+        assertEquals(new BigDecimal("300.00"), response.getSubTotal());
+        assertEquals(new BigDecimal("15.00"), response.getTaxAmount());
+        assertEquals(new BigDecimal("315.00"), response.getTotalAmount());
+        verify(eventPublisher, times(1)).publishEvent(any());
+    }
+
+    @Test
+    public void testUpdateOrderCustomerAndNotes() {
+        // Arrange
+        OrderDAO existingOrder = new OrderDAO();
+        existingOrder.setOrderId(201L);
+        existingOrder.setRestaurantId(1L);
+        existingOrder.setStatus(OrderStatus.PENDING);
+        existingOrder.setPaymentStatus(PaymentStatus.PENDING);
+        existingOrder.setPaymentMode(PaymentMode.CASH);
+        existingOrder.setOrderType(OrderType.DINE_IN);
+        existingOrder.setEntityNo("Table-1");
+
+        CustomerDAO customer = new CustomerDAO();
+        customer.setCustomerName("Alice");
+        customer.setPhone("1234567890");
+        existingOrder.setCustomer(customer);
+
+        when(orderRepository.findById(201L)).thenReturn(Optional.of(existingOrder));
+        when(validationService.validateRestaurant(1L)).thenReturn(new RestaurantValidationService.RestaurantResponse());
+        when(customerRepository.save(any(CustomerDAO.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenReturn(new OrderResponse());
+
+        // Act
+        UpdateOrderRequest updateReq = new UpdateOrderRequest();
+        updateReq.setCustomerName("Bob");
+        updateReq.setPhone("9999999999");
+        updateReq.setNotes("Extra spicy");
+
+        orderService.updateOrder(201L, updateReq);
+
+        // Assert
+        assertEquals("Bob", existingOrder.getCustomer().getCustomerName());
+        assertEquals("9999999999", existingOrder.getCustomer().getPhone());
+        assertEquals("Extra spicy", existingOrder.getNotes());
+        verify(customerRepository, times(1)).save(any(CustomerDAO.class));
+    }
+
+    @Test
+    public void testUpdateOrderEntityAndTableOccupancy() {
+        // Arrange
+        OrderDAO existingOrder = new OrderDAO();
+        existingOrder.setOrderId(202L);
+        existingOrder.setRestaurantId(1L);
+        existingOrder.setStatus(OrderStatus.PENDING);
+        existingOrder.setPaymentStatus(PaymentStatus.PENDING);
+        existingOrder.setPaymentMode(PaymentMode.CASH);
+        existingOrder.setOrderType(OrderType.DINE_IN);
+        existingOrder.setEntityNo("Table-1");
+
+        when(orderRepository.findById(202L)).thenReturn(Optional.of(existingOrder));
+        when(validationService.validateRestaurant(1L)).thenReturn(new RestaurantValidationService.RestaurantResponse());
+        RestaurantValidationService.EntityResponse entityResp = new RestaurantValidationService.EntityResponse();
+        entityResp.setEntityNo("Table-2");
+        entityResp.setOrderEntityType("TABLE");
+        when(validationService.validateEntity("Table-2", 1L)).thenReturn(entityResp);
+        when(orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(eq(1L), eq("Table-1"), anyList(), eq(202L))).thenReturn(false);
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenReturn(new OrderResponse());
+
+        // Act - switch table to Table-2
+        UpdateOrderRequest updateReq = new UpdateOrderRequest();
+        updateReq.setEntityNo("Table-2");
+
+        orderService.updateOrder(202L, updateReq);
+
+        // Assert
+        assertEquals("Table-2", existingOrder.getEntityNo());
+        assertEquals("TABLE", existingOrder.getOrderEntityType());
+        verify(validationService, times(1)).updateEntityStatus("Table-2", 1L, com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
+        verify(validationService, times(1)).updateEntityStatus("Table-1", 1L, com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
+    }
+
+    @Test
+    public void testUpdateOrderOnCompletedOrCancelledOrderFails() {
+        OrderDAO completedOrder = new OrderDAO();
+        completedOrder.setOrderId(203L);
+        completedOrder.setStatus(OrderStatus.COMPLETED);
+        when(orderRepository.findById(203L)).thenReturn(Optional.of(completedOrder));
+
+        UpdateOrderRequest updateReq = new UpdateOrderRequest();
+        updateReq.setNotes("Should fail");
+
+        assertThrows(IllegalArgumentException.class, () -> orderService.updateOrder(203L, updateReq));
+
+        OrderDAO cancelledOrder = new OrderDAO();
+        cancelledOrder.setOrderId(204L);
+        cancelledOrder.setStatus(OrderStatus.CANCELLED);
+        when(orderRepository.findById(204L)).thenReturn(Optional.of(cancelledOrder));
+
+        assertThrows(IllegalArgumentException.class, () -> orderService.updateOrder(204L, updateReq));
+    }
+
+    @Test
+    public void testUpdateOrderItemsOnCompletedPaymentFails() {
+        OrderDAO paidOrder = new OrderDAO();
+        paidOrder.setOrderId(205L);
+        paidOrder.setRestaurantId(1L);
+        paidOrder.setStatus(OrderStatus.PREPARING);
+        paidOrder.setPaymentStatus(PaymentStatus.COMPLETED);
+        when(orderRepository.findById(205L)).thenReturn(Optional.of(paidOrder));
+        when(validationService.validateRestaurant(1L)).thenReturn(new RestaurantValidationService.RestaurantResponse());
+
+        UpdateOrderRequest updateReq = new UpdateOrderRequest();
+        OrderItemRequest item = new OrderItemRequest();
+        item.setMenuId(101L);
+        item.setQuantity(2);
+        updateReq.setItems(List.of(item));
+
+        assertThrows(IllegalArgumentException.class, () -> orderService.updateOrder(205L, updateReq));
+    }
 }
+
 
 

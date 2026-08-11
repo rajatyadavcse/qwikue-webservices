@@ -2,6 +2,7 @@ package com.kitchen.order.service;
 
 import com.kitchen.order.dto.request.CreateOrderRequest;
 import com.kitchen.order.dto.request.OrderDiscountRequest;
+import com.kitchen.order.dto.request.UpdateOrderRequest;
 import com.kitchen.order.dto.request.UpdateOrderStatusRequest;
 import com.kitchen.order.dto.response.OrderItemResponse;
 import com.kitchen.order.dto.response.OrderResponse;
@@ -85,6 +86,12 @@ public interface IOrderService {
      * Removes an order-level discount from an existing order and recalculates totals.
      */
     OrderResponse removeOrderDiscount(Long orderId);
+
+    /**
+     * Updates details of an existing order (such as items, table/entity, customer details, notes, payment mode, or discount)
+     * and recalculates totals if items or discount are modified.
+     */
+    OrderResponse updateOrder(Long orderId, UpdateOrderRequest request);
 }
 
 

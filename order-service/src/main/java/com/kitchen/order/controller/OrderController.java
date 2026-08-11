@@ -2,6 +2,7 @@ package com.kitchen.order.controller;
 
 import com.kitchen.order.dto.request.CreateOrderRequest;
 import com.kitchen.order.dto.request.OrderDiscountRequest;
+import com.kitchen.order.dto.request.UpdateOrderRequest;
 import com.kitchen.order.dto.request.UpdateOrderStatusRequest;
 import com.kitchen.order.dto.response.OrderItemResponse;
 import com.kitchen.order.dto.response.OrderResponse;
@@ -88,6 +89,27 @@ public class OrderController {
     public ResponseEntity<OrderResponse> getOrderById(
             @Parameter(description = "Order ID") @PathVariable Long id) {
         return ResponseEntity.ok(orderService.getOrderById(id));
+    }
+
+    // ── PUT /orders/{id} ──────────────────────────────────────────────────────
+
+    @Operation(
+            summary = "Update an order",
+            description = "Updates order details such as items, table/entity, customer details, notes, payment mode, or discount. " +
+                          "Recalculates totals and charges if items or discounts are modified. Only non-completed/non-cancelled orders can be updated."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Order updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid request or order is in a non-modifiable state"),
+            @ApiResponse(responseCode = "404", description = "Order or referenced entity/menu item not found")
+    })
+    @PutMapping(value = "/{id}",
+            produces = MediaType.APPLICATION_JSON_VALUE,
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<OrderResponse> updateOrder(
+            @Parameter(description = "Order ID") @PathVariable Long id,
+            @Valid @RequestBody UpdateOrderRequest request) {
+        return ResponseEntity.ok(orderService.updateOrder(id, request));
     }
 
     // ── GET /orders?restaurantId=&status=&page=&size= ─────────────────────────
