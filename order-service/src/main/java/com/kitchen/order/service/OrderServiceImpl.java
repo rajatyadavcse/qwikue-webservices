@@ -54,8 +54,7 @@ public class OrderServiceImpl implements IOrderService {
     private static final List<OrderStatus> KITCHEN_ACTIVE_STATUSES = List.of(
             OrderStatus.PENDING,
             OrderStatus.PREPARING,
-            OrderStatus.READY
-    );
+            OrderStatus.READY);
 
     @Autowired
     private OrderRepository orderRepository;
@@ -93,7 +92,8 @@ public class OrderServiceImpl implements IOrderService {
                 request.getRestaurantId(), orderType, request.getEntityNo());
 
         // 1. Validate restaurant exists and get configurations
-        RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(request.getRestaurantId());
+        RestaurantValidationService.RestaurantResponse restaurant = validationService
+                .validateRestaurant(request.getRestaurantId());
 
         // 2. Validate entity based on orderType
         RestaurantValidationService.EntityResponse entity = null;
@@ -186,11 +186,13 @@ public class OrderServiceImpl implements IOrderService {
             subTotal = subTotal.add(itemTotal);
         }
 
-        // Calculate dynamic taxes, service charges, and discounts (including order-level discount)
+        // Calculate dynamic taxes, service charges, and discounts (including
+        // order-level discount)
         calculateOrderPricing(order, restaurant.getTaxesAndCharges(), request.getDiscount());
 
         if (order.getPaymentMode() == PaymentMode.CASH) {
-            // Generate daily token number for the restaurant (Asia/Kolkata timezone matching jackson timezone)
+            // Generate daily token number for the restaurant (Asia/Kolkata timezone
+            // matching jackson timezone)
             java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata"));
             int tokenNo = tokenCounterRepository.getNextTokenNo(request.getRestaurantId(), today);
             order.setTokenNo(tokenNo);
@@ -208,8 +210,7 @@ public class OrderServiceImpl implements IOrderService {
                         saved.getOrderId(),
                         saved.getTotalAmount(),
                         restaurant.getRazorpayKeyId(),
-                        restaurant.getRazorpayKeySecret()
-                );
+                        restaurant.getRazorpayKeySecret());
                 saved.setRazorpayOrderId(razorpayOrderId);
                 saved = orderRepository.save(saved); // Update order with razorpayOrderId
             } catch (Exception e) {
@@ -221,8 +222,10 @@ public class OrderServiceImpl implements IOrderService {
 
         log.info("Order created successfully with orderId={}, tokenNo={}", saved.getOrderId(), saved.getTokenNo());
 
-        if (saved.getOrderType() == OrderType.DINE_IN && saved.getEntityNo() != null && !saved.getEntityNo().trim().isEmpty()) {
-            validationService.updateEntityStatus(saved.getEntityNo().trim(), saved.getRestaurantId(), com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
+        if (saved.getOrderType() == OrderType.DINE_IN && saved.getEntityNo() != null
+                && !saved.getEntityNo().trim().isEmpty()) {
+            validationService.updateEntityStatus(saved.getEntityNo().trim(), saved.getRestaurantId(),
+                    com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
         }
 
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
@@ -242,7 +245,8 @@ public class OrderServiceImpl implements IOrderService {
         OrderResponse response = orderMapper.orderDAOToOrderResponse(order);
         if (response.getPaymentMode() == PaymentMode.ONLINE && response.getPaymentStatus() == PaymentStatus.PENDING) {
             try {
-                RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(response.getRestaurantId());
+                RestaurantValidationService.RestaurantResponse restaurant = validationService
+                        .validateRestaurant(response.getRestaurantId());
                 response.setRazorpayKeyId(restaurant.getRazorpayKeyId());
             } catch (Exception e) {
                 log.error("Failed to load restaurant details for orderId={}: {}", orderId, e.getMessage());
@@ -272,16 +276,19 @@ public class OrderServiceImpl implements IOrderService {
             if (status != null) {
                 page = orderRepository.findByRestaurantIdAndStatus(restaurantId, status, pageable);
             } else {
-                page = orderRepository.findByRestaurantIdAndStatusNot(restaurantId, OrderStatus.PAYMENT_PENDING, pageable);
+                page = orderRepository.findByRestaurantIdAndStatusNot(restaurantId, OrderStatus.PAYMENT_PENDING,
+                        pageable);
             }
         } else {
             LocalDateTime start = (fromDate != null) ? fromDate.atStartOfDay() : null;
             LocalDateTime end = (toDate != null) ? toDate.plusDays(1).atStartOfDay() : null;
 
             if (status != null) {
-                page = orderRepository.findByRestaurantIdAndStatusAndDateRange(restaurantId, status, start, end, pageable);
+                page = orderRepository.findByRestaurantIdAndStatusAndDateRange(restaurantId, status, start, end,
+                        pageable);
             } else {
-                page = orderRepository.findByRestaurantIdAndStatusNotAndDateRange(restaurantId, OrderStatus.PAYMENT_PENDING, start, end, pageable);
+                page = orderRepository.findByRestaurantIdAndStatusNotAndDateRange(restaurantId,
+                        OrderStatus.PAYMENT_PENDING, start, end, pageable);
             }
         }
 
@@ -295,7 +302,6 @@ public class OrderServiceImpl implements IOrderService {
                 page.getTotalPages(),
                 page.isLast());
     }
-
 
     @Override
     @Transactional(readOnly = true)
@@ -331,18 +337,19 @@ public class OrderServiceImpl implements IOrderService {
         if (currentStatus == newStatus) {
             if (newStatus == OrderStatus.PREPARING && request.getPrepMinutes() != null) {
                 // This is a delay request
-                log.info("Delaying order {} by {} minutes. Reason: {}", orderId, request.getPrepMinutes(), request.getReason());
-                
+                log.info("Delaying order {} by {} minutes. Reason: {}", orderId, request.getPrepMinutes(),
+                        request.getReason());
+
                 int delayMin = request.getPrepMinutes();
                 order.setPrepMinutes((order.getPrepMinutes() != null ? order.getPrepMinutes() : 0) + delayMin);
-                
+
                 LocalDateTime baseTime = order.getReadyAt() != null ? order.getReadyAt() : LocalDateTime.now();
                 order.setReadyAt(baseTime.plusMinutes(delayMin));
-                
+
                 if (request.getReason() != null) {
                     order.setReason(request.getReason());
                 }
-                
+
                 OrderDAO saved = orderRepository.save(order);
                 log.info("Order {} delayed successfully. New readyAt: {}", orderId, order.getReadyAt());
                 OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
@@ -381,10 +388,16 @@ public class OrderServiceImpl implements IOrderService {
         if (request.getReason() != null) {
             order.setReason(request.getReason());
         }
-        
+
         OrderDAO saved = orderRepository.save(order);
 
-        if (newStatus == OrderStatus.COMPLETED) {
+        if (newStatus == OrderStatus.READY) {
+            if (saved.getOrderType() == OrderType.DINE_IN && saved.getEntityNo() != null
+                    && !saved.getEntityNo().trim().isEmpty()) {
+                validationService.updateEntityStatus(saved.getEntityNo().trim(), saved.getRestaurantId(),
+                        com.restaurant.service.model.OrderEntityStatus.BILL_PENDING);
+            }
+        } else if (newStatus == OrderStatus.COMPLETED) {
             releaseEntityIfNoActiveOrders(saved);
         }
 
@@ -425,10 +438,10 @@ public class OrderServiceImpl implements IOrderService {
     public OrderResponse completePayment(Long orderId, String razorpayPaymentId) {
         log.info("Completing payment for orderId={}, razorpayPaymentId={}", orderId, razorpayPaymentId);
         OrderDAO order = findOrderById(orderId);
-        
+
         order.setPaymentStatus(PaymentStatus.COMPLETED);
         order.setRazorpayPaymentId(razorpayPaymentId);
-        
+
         // Auto-transition status to PENDING and generate token
         if (order.getStatus() == OrderStatus.PAYMENT_PENDING) {
             order.setStatus(OrderStatus.PENDING);
@@ -437,7 +450,7 @@ public class OrderServiceImpl implements IOrderService {
             int tokenNo = tokenCounterRepository.getNextTokenNo(order.getRestaurantId(), today);
             order.setTokenNo(tokenNo);
         }
-        
+
         OrderDAO saved = orderRepository.save(order);
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
         eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
@@ -479,7 +492,7 @@ public class OrderServiceImpl implements IOrderService {
 
         log.debug("Fetching current active order for restaurantId={}, entityNo={}", restaurantId, entityNo);
         return orderRepository.findFirstByRestaurantIdAndEntityNoAndStatusInOrderByCreatedAtDesc(
-                        restaurantId, entityNo.trim(), KITCHEN_ACTIVE_STATUSES)
+                restaurantId, entityNo.trim(), KITCHEN_ACTIVE_STATUSES)
                 .map(orderMapper::orderDAOToOrderResponse)
                 .orElse(null);
     }
@@ -494,14 +507,15 @@ public class OrderServiceImpl implements IOrderService {
         if (entityNo != null && !entityNo.isBlank()) {
             log.debug("Fetching current active order for restaurantId={}, entityNo={}", restaurantId, entityNo);
             return orderRepository.findFirstByRestaurantIdAndEntityNoAndStatusInOrderByCreatedAtDesc(
-                            restaurantId, entityNo.trim(), KITCHEN_ACTIVE_STATUSES)
+                    restaurantId, entityNo.trim(), KITCHEN_ACTIVE_STATUSES)
                     .map(orderMapper::orderDAOToOrderResponse)
                     .map(List::of)
                     .orElse(Collections.emptyList());
         }
 
         log.debug("Fetching all current active orders for restaurantId={}", restaurantId);
-        List<OrderDAO> activeOrders = orderRepository.findByRestaurantIdAndStatusIn(restaurantId, KITCHEN_ACTIVE_STATUSES);
+        List<OrderDAO> activeOrders = orderRepository.findByRestaurantIdAndStatusIn(restaurantId,
+                KITCHEN_ACTIVE_STATUSES);
         return orderMapper.orderDAOListToResponseList(activeOrders);
     }
 
@@ -517,22 +531,24 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
-            throw new IllegalArgumentException("Cannot modify discount for an order whose payment is already COMPLETED");
+            throw new IllegalArgumentException(
+                    "Cannot modify discount for an order whose payment is already COMPLETED");
         }
 
-        RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(order.getRestaurantId());
+        RestaurantValidationService.RestaurantResponse restaurant = validationService
+                .validateRestaurant(order.getRestaurantId());
 
         calculateOrderPricing(order, restaurant.getTaxesAndCharges(), request);
 
-        // If payment is ONLINE and status is PAYMENT_PENDING, re-create Razorpay order with updated amount
+        // If payment is ONLINE and status is PAYMENT_PENDING, re-create Razorpay order
+        // with updated amount
         if (order.getPaymentMode() == PaymentMode.ONLINE && order.getPaymentStatus() == PaymentStatus.PENDING) {
             try {
                 String razorpayOrderId = paymentService.createOrder(
                         order.getOrderId(),
                         order.getTotalAmount(),
                         restaurant.getRazorpayKeyId(),
-                        restaurant.getRazorpayKeySecret()
-                );
+                        restaurant.getRazorpayKeySecret());
                 order.setRazorpayOrderId(razorpayOrderId);
             } catch (Exception e) {
                 log.error("Failed to re-create Razorpay Order for orderId={}: {}", order.getOrderId(), e.getMessage());
@@ -541,7 +557,8 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         OrderDAO saved = orderRepository.save(order);
-        log.info("Order-level discount applied successfully for orderId={}, new totalAmount={}", saved.getOrderId(), saved.getTotalAmount());
+        log.info("Order-level discount applied successfully for orderId={}, new totalAmount={}", saved.getOrderId(),
+                saved.getTotalAmount());
 
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
         if (saved.getPaymentMode() == PaymentMode.ONLINE) {
@@ -562,22 +579,24 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
-            throw new IllegalArgumentException("Cannot modify discount for an order whose payment is already COMPLETED");
+            throw new IllegalArgumentException(
+                    "Cannot modify discount for an order whose payment is already COMPLETED");
         }
 
-        RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(order.getRestaurantId());
+        RestaurantValidationService.RestaurantResponse restaurant = validationService
+                .validateRestaurant(order.getRestaurantId());
 
         calculateOrderPricing(order, restaurant.getTaxesAndCharges(), null);
 
-        // If payment is ONLINE and status is PAYMENT_PENDING, re-create Razorpay order with updated amount
+        // If payment is ONLINE and status is PAYMENT_PENDING, re-create Razorpay order
+        // with updated amount
         if (order.getPaymentMode() == PaymentMode.ONLINE && order.getPaymentStatus() == PaymentStatus.PENDING) {
             try {
                 String razorpayOrderId = paymentService.createOrder(
                         order.getOrderId(),
                         order.getTotalAmount(),
                         restaurant.getRazorpayKeyId(),
-                        restaurant.getRazorpayKeySecret()
-                );
+                        restaurant.getRazorpayKeySecret());
                 order.setRazorpayOrderId(razorpayOrderId);
             } catch (Exception e) {
                 log.error("Failed to re-create Razorpay Order for orderId={}: {}", order.getOrderId(), e.getMessage());
@@ -586,7 +605,8 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         OrderDAO saved = orderRepository.save(order);
-        log.info("Order-level discount removed successfully for orderId={}, new totalAmount={}", saved.getOrderId(), saved.getTotalAmount());
+        log.info("Order-level discount removed successfully for orderId={}, new totalAmount={}", saved.getOrderId(),
+                saved.getTotalAmount());
 
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
         if (saved.getPaymentMode() == PaymentMode.ONLINE) {
@@ -606,7 +626,8 @@ public class OrderServiceImpl implements IOrderService {
             throw new IllegalArgumentException("Cannot update order with status: " + order.getStatus());
         }
 
-        RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(order.getRestaurantId());
+        RestaurantValidationService.RestaurantResponse restaurant = validationService
+                .validateRestaurant(order.getRestaurantId());
 
         String oldEntityNo = order.getEntityNo();
         OrderType oldOrderType = order.getOrderType();
@@ -623,7 +644,8 @@ public class OrderServiceImpl implements IOrderService {
                 if (newEntityNo.isEmpty()) {
                     throw new IllegalArgumentException("entityNo is required for DINE_IN orders");
                 }
-                RestaurantValidationService.EntityResponse entity = validationService.validateEntity(newEntityNo, order.getRestaurantId());
+                RestaurantValidationService.EntityResponse entity = validationService.validateEntity(newEntityNo,
+                        order.getRestaurantId());
                 order.setEntityNo(newEntityNo);
                 order.setOrderEntityType(entity != null ? entity.getOrderEntityType() : null);
             } else {
@@ -639,8 +661,10 @@ public class OrderServiceImpl implements IOrderService {
                 || (oldEntityNo == null ? order.getEntityNo() != null : !oldEntityNo.equals(order.getEntityNo()));
 
         if (entityChanged) {
-            if (order.getOrderType() == OrderType.DINE_IN && order.getEntityNo() != null && !order.getEntityNo().trim().isEmpty()) {
-                validationService.updateEntityStatus(order.getEntityNo().trim(), order.getRestaurantId(), com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
+            if (order.getOrderType() == OrderType.DINE_IN && order.getEntityNo() != null
+                    && !order.getEntityNo().trim().isEmpty()) {
+                validationService.updateEntityStatus(order.getEntityNo().trim(), order.getRestaurantId(),
+                        com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
             }
             if (oldOrderType == OrderType.DINE_IN && oldEntityNo != null && !oldEntityNo.trim().isEmpty()) {
                 releaseEntityIfNoActiveOrders(oldEntityNo, order.getRestaurantId(), order.getOrderId());
@@ -671,12 +695,14 @@ public class OrderServiceImpl implements IOrderService {
         // 5. Update paymentMode if provided
         if (request.getPaymentMode() != null && request.getPaymentMode() != order.getPaymentMode()) {
             if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
-                throw new IllegalArgumentException("Cannot change payment mode for an order whose payment is already COMPLETED");
+                throw new IllegalArgumentException(
+                        "Cannot change payment mode for an order whose payment is already COMPLETED");
             }
             PaymentMode newPaymentMode = request.getPaymentMode();
             if (restaurant.getPaymentModes() != null && !restaurant.getPaymentModes().isEmpty()
                     && !restaurant.getPaymentModes().contains(newPaymentMode)) {
-                throw new IllegalArgumentException("Payment mode " + newPaymentMode + " is not supported by this restaurant");
+                throw new IllegalArgumentException(
+                        "Payment mode " + newPaymentMode + " is not supported by this restaurant");
             }
             order.setPaymentMode(newPaymentMode);
             if (newPaymentMode == PaymentMode.CASH && order.getStatus() == OrderStatus.PAYMENT_PENDING) {
@@ -686,7 +712,8 @@ public class OrderServiceImpl implements IOrderService {
                     int tokenNo = tokenCounterRepository.getNextTokenNo(order.getRestaurantId(), today);
                     order.setTokenNo(tokenNo);
                 }
-            } else if (newPaymentMode == PaymentMode.ONLINE && order.getStatus() == OrderStatus.PENDING && order.getPaymentStatus() == PaymentStatus.PENDING) {
+            } else if (newPaymentMode == PaymentMode.ONLINE && order.getStatus() == OrderStatus.PENDING
+                    && order.getPaymentStatus() == PaymentStatus.PENDING) {
                 order.setStatus(OrderStatus.PAYMENT_PENDING);
             }
         }
@@ -695,7 +722,8 @@ public class OrderServiceImpl implements IOrderService {
         boolean pricingChanged = false;
         if (request.getItems() != null) {
             if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
-                throw new IllegalArgumentException("Cannot modify items for an order whose payment is already COMPLETED");
+                throw new IllegalArgumentException(
+                        "Cannot modify items for an order whose payment is already COMPLETED");
             }
             if (request.getItems().isEmpty()) {
                 throw new IllegalArgumentException("Order must contain at least one item");
@@ -730,21 +758,23 @@ public class OrderServiceImpl implements IOrderService {
             pricingChanged = true;
         } else if (request.getDiscount() != null) {
             if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
-                throw new IllegalArgumentException("Cannot modify discount for an order whose payment is already COMPLETED");
+                throw new IllegalArgumentException(
+                        "Cannot modify discount for an order whose payment is already COMPLETED");
             }
             calculateOrderPricing(order, restaurant.getTaxesAndCharges(), request.getDiscount());
             pricingChanged = true;
         }
 
-        // 7. If pricing changed and payment mode is ONLINE with PAYMENT_PENDING, update Razorpay order
-        if (pricingChanged && order.getPaymentMode() == PaymentMode.ONLINE && order.getPaymentStatus() == PaymentStatus.PENDING) {
+        // 7. If pricing changed and payment mode is ONLINE with PAYMENT_PENDING, update
+        // Razorpay order
+        if (pricingChanged && order.getPaymentMode() == PaymentMode.ONLINE
+                && order.getPaymentStatus() == PaymentStatus.PENDING) {
             try {
                 String razorpayOrderId = paymentService.createOrder(
                         order.getOrderId(),
                         order.getTotalAmount(),
                         restaurant.getRazorpayKeyId(),
-                        restaurant.getRazorpayKeySecret()
-                );
+                        restaurant.getRazorpayKeySecret());
                 order.setRazorpayOrderId(razorpayOrderId);
             } catch (Exception e) {
                 log.error("Failed to re-create Razorpay Order for orderId={}: {}", order.getOrderId(), e.getMessage());
@@ -765,7 +795,8 @@ public class OrderServiceImpl implements IOrderService {
 
     // ── Private helpers ────────────────────────────────────────────────────────
 
-    private void calculateOrderPricing(OrderDAO order, List<RestaurantChargeDto> restaurantCharges, OrderDiscountRequest orderDiscount) {
+    private void calculateOrderPricing(OrderDAO order, List<RestaurantChargeDto> restaurantCharges,
+            OrderDiscountRequest orderDiscount) {
         BigDecimal subTotal = order.getItems().stream()
                 .map(OrderItemDAO::getTotalItemPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -780,7 +811,8 @@ public class OrderServiceImpl implements IOrderService {
             for (RestaurantChargeDto charge : restaurantCharges) {
                 BigDecimal amount = BigDecimal.ZERO;
                 if ("PERCENTAGE".equalsIgnoreCase(charge.getType())) {
-                    amount = subTotal.multiply(charge.getValue()).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+                    amount = subTotal.multiply(charge.getValue()).divide(BigDecimal.valueOf(100), 2,
+                            java.math.RoundingMode.HALF_UP);
                 } else if ("FIXED".equalsIgnoreCase(charge.getType())) {
                     amount = charge.getValue();
                 }
@@ -870,7 +902,8 @@ public class OrderServiceImpl implements IOrderService {
                     List.of(OrderStatus.PAYMENT_PENDING, OrderStatus.PENDING, OrderStatus.PREPARING, OrderStatus.READY),
                     excludeOrderId);
             if (!hasOtherActiveOrders) {
-                validationService.updateEntityStatus(entityNo.trim(), restaurantId, com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
+                validationService.updateEntityStatus(entityNo.trim(), restaurantId,
+                        com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
             }
         }
     }

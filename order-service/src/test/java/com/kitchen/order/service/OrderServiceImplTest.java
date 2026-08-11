@@ -90,7 +90,8 @@ public class OrderServiceImplTest {
         itemRequest.setQuantity(2);
         request.setItems(Collections.singletonList(itemRequest));
 
-        // Mock Restaurant details with dynamic charges (CGST 2.5%, SGST 2.5%, Service Charge 10.0%)
+        // Mock Restaurant details with dynamic charges (CGST 2.5%, SGST 2.5%, Service
+        // Charge 10.0%)
         RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
         restaurant.setRestaurantId(1L);
         restaurant.setRestaurantName("Tasty Restaurant");
@@ -315,7 +316,8 @@ public class OrderServiceImplTest {
         itemRequest.setQuantity(2);
         request.setItems(Collections.singletonList(itemRequest));
 
-        // Mock Restaurant details with dynamic charges (CGST 2.5%, Flat Discount 15.00, 10% Discount)
+        // Mock Restaurant details with dynamic charges (CGST 2.5%, Flat Discount 15.00,
+        // 10% Discount)
         RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
         restaurant.setRestaurantId(1L);
         restaurant.setRestaurantName("Tasty Restaurant");
@@ -394,7 +396,8 @@ public class OrderServiceImplTest {
         // Total Discount = 25.00
         assertEquals(new BigDecimal("25.00"), response.getDiscountAmount());
 
-        // Total payable amount = 100.00 (subtotal) + 2.50 (tax) - 25.00 (discount) = 77.50
+        // Total payable amount = 100.00 (subtotal) + 2.50 (tax) - 25.00 (discount) =
+        // 77.50
         assertEquals(new BigDecimal("77.50"), response.getTotalAmount());
 
         // Snapshot details count check
@@ -500,9 +503,8 @@ public class OrderServiceImplTest {
         orderService.createOrder(request);
 
         // Assert
-        verify(customerRepository, times(1)).save(argThat(customer -> 
-            customer.getCustomerName().equals("Jane Doe") && customer.getPhone().equals("9876543210")
-        ));
+        verify(customerRepository, times(1)).save(argThat(
+                customer -> customer.getCustomerName().equals("Jane Doe") && customer.getPhone().equals("9876543210")));
     }
 
     @Test
@@ -555,9 +557,8 @@ public class OrderServiceImplTest {
         orderService.createOrder(request);
 
         // Assert
-        verify(customerRepository, times(1)).save(argThat(customer -> 
-            customer.getCustomerName().equals("Alice") && customer.getPhone().equals("5556667777")
-        ));
+        verify(customerRepository, times(1)).save(argThat(
+                customer -> customer.getCustomerName().equals("Alice") && customer.getPhone().equals("5556667777")));
     }
 
     @Test
@@ -566,16 +567,16 @@ public class OrderServiceImplTest {
         Long restaurantId = 1L;
         OrderStatus status = OrderStatus.PENDING;
         Pageable pageable = PageRequest.of(0, 10);
-        
+
         List<OrderDAO> orders = List.of(new OrderDAO());
         Page<OrderDAO> page = new PageImpl<>(orders, pageable, 1);
-        
+
         when(orderRepository.findByRestaurantIdAndStatus(restaurantId, status, pageable)).thenReturn(page);
         when(orderMapper.orderDAOListToResponseList(any())).thenReturn(List.of(new OrderResponse()));
-        
+
         // Act
         var response = orderService.getOrdersByRestaurant(restaurantId, status, null, null, pageable);
-        
+
         // Assert
         verify(orderRepository, times(1)).findByRestaurantIdAndStatus(restaurantId, status, pageable);
         assertEquals(1, response.getContent().size());
@@ -586,18 +587,20 @@ public class OrderServiceImplTest {
         // Arrange
         Long restaurantId = 1L;
         Pageable pageable = PageRequest.of(0, 10);
-        
+
         List<OrderDAO> orders = List.of(new OrderDAO());
         Page<OrderDAO> page = new PageImpl<>(orders, pageable, 1);
-        
-        when(orderRepository.findByRestaurantIdAndStatusNot(restaurantId, OrderStatus.PAYMENT_PENDING, pageable)).thenReturn(page);
+
+        when(orderRepository.findByRestaurantIdAndStatusNot(restaurantId, OrderStatus.PAYMENT_PENDING, pageable))
+                .thenReturn(page);
         when(orderMapper.orderDAOListToResponseList(any())).thenReturn(List.of(new OrderResponse()));
-        
+
         // Act
         var response = orderService.getOrdersByRestaurant(restaurantId, null, null, null, pageable);
-        
+
         // Assert
-        verify(orderRepository, times(1)).findByRestaurantIdAndStatusNot(restaurantId, OrderStatus.PAYMENT_PENDING, pageable);
+        verify(orderRepository, times(1)).findByRestaurantIdAndStatusNot(restaurantId, OrderStatus.PAYMENT_PENDING,
+                pageable);
         assertEquals(1, response.getContent().size());
     }
 
@@ -609,21 +612,23 @@ public class OrderServiceImplTest {
         LocalDate from = LocalDate.of(2026, 6, 1);
         LocalDate to = LocalDate.of(2026, 6, 30);
         Pageable pageable = PageRequest.of(0, 10);
-        
+
         List<OrderDAO> orders = List.of(new OrderDAO());
         Page<OrderDAO> page = new PageImpl<>(orders, pageable, 1);
-        
+
         LocalDateTime start = from.atStartOfDay();
         LocalDateTime end = to.plusDays(1).atStartOfDay();
-        
-        when(orderRepository.findByRestaurantIdAndStatusAndDateRange(restaurantId, status, start, end, pageable)).thenReturn(page);
+
+        when(orderRepository.findByRestaurantIdAndStatusAndDateRange(restaurantId, status, start, end, pageable))
+                .thenReturn(page);
         when(orderMapper.orderDAOListToResponseList(any())).thenReturn(List.of(new OrderResponse()));
-        
+
         // Act
         var response = orderService.getOrdersByRestaurant(restaurantId, status, from, to, pageable);
-        
+
         // Assert
-        verify(orderRepository, times(1)).findByRestaurantIdAndStatusAndDateRange(restaurantId, status, start, end, pageable);
+        verify(orderRepository, times(1)).findByRestaurantIdAndStatusAndDateRange(restaurantId, status, start, end,
+                pageable);
         assertEquals(1, response.getContent().size());
     }
 
@@ -634,21 +639,23 @@ public class OrderServiceImplTest {
         LocalDate from = LocalDate.of(2026, 6, 1);
         LocalDate to = LocalDate.of(2026, 6, 30);
         Pageable pageable = PageRequest.of(0, 10);
-        
+
         List<OrderDAO> orders = List.of(new OrderDAO());
         Page<OrderDAO> page = new PageImpl<>(orders, pageable, 1);
-        
+
         LocalDateTime start = from.atStartOfDay();
         LocalDateTime end = to.plusDays(1).atStartOfDay();
-        
-        when(orderRepository.findByRestaurantIdAndStatusNotAndDateRange(restaurantId, OrderStatus.PAYMENT_PENDING, start, end, pageable)).thenReturn(page);
+
+        when(orderRepository.findByRestaurantIdAndStatusNotAndDateRange(restaurantId, OrderStatus.PAYMENT_PENDING,
+                start, end, pageable)).thenReturn(page);
         when(orderMapper.orderDAOListToResponseList(any())).thenReturn(List.of(new OrderResponse()));
-        
+
         // Act
         var response = orderService.getOrdersByRestaurant(restaurantId, null, from, to, pageable);
-        
+
         // Assert
-        verify(orderRepository, times(1)).findByRestaurantIdAndStatusNotAndDateRange(restaurantId, OrderStatus.PAYMENT_PENDING, start, end, pageable);
+        verify(orderRepository, times(1)).findByRestaurantIdAndStatusNotAndDateRange(restaurantId,
+                OrderStatus.PAYMENT_PENDING, start, end, pageable);
         assertEquals(1, response.getContent().size());
     }
 
@@ -658,10 +665,10 @@ public class OrderServiceImplTest {
         Long restaurantId = 1L;
         OrderStatus status = OrderStatus.PAYMENT_PENDING;
         Pageable pageable = PageRequest.of(0, 10);
-        
+
         // Act
         var response = orderService.getOrdersByRestaurant(restaurantId, status, null, null, pageable);
-        
+
         // Assert
         verifyNoInteractions(orderRepository);
         assertEquals(0, response.getContent().size());
@@ -751,8 +758,7 @@ public class OrderServiceImplTest {
         // Act & Assert
         IllegalArgumentException exception = org.junit.jupiter.api.Assertions.assertThrows(
                 IllegalArgumentException.class,
-                () -> orderService.createOrder(request)
-        );
+                () -> orderService.createOrder(request));
         assertEquals("Payment mode ONLINE is not supported by this restaurant", exception.getMessage());
     }
 
@@ -821,11 +827,9 @@ public class OrderServiceImplTest {
 
         // Verify entity validation was never called for TAKE_AWAY without entityNo
         verify(validationService, never()).validateEntity(any(), any());
-        verify(orderRepository).save(argThat(order ->
-                order.getOrderType() == OrderType.TAKE_AWAY &&
+        verify(orderRepository).save(argThat(order -> order.getOrderType() == OrderType.TAKE_AWAY &&
                 order.getEntityNo() == null &&
-                order.getOrderEntityType() == null
-        ));
+                order.getOrderEntityType() == null));
     }
 
     @Test
@@ -844,8 +848,7 @@ public class OrderServiceImplTest {
         // Act & Assert
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> orderService.createOrder(request)
-        );
+                () -> orderService.createOrder(request));
         assertEquals("entityNo is required for DINE_IN orders", ex.getMessage());
         verify(validationService, never()).validateEntity(any(), any());
     }
@@ -866,8 +869,7 @@ public class OrderServiceImplTest {
         // Act & Assert
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> orderService.createOrder(request)
-        );
+                () -> orderService.createOrder(request));
         assertEquals("entityNo is required for DINE_IN orders", ex.getMessage());
         verify(validationService, never()).validateEntity(any(), any());
     }
@@ -988,7 +990,34 @@ public class OrderServiceImplTest {
         assertEquals("Table-5", response.getEntityNo());
         assertEquals("TABLE", response.getOrderEntityType());
         verify(validationService, times(1)).validateEntity("Table-5", 1L);
-        verify(validationService, times(1)).updateEntityStatus("Table-5", 1L, com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
+        verify(validationService, times(1)).updateEntityStatus("Table-5", 1L,
+                com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
+    }
+
+    @Test
+    void updateOrderStatus_ready_setsTableToBillPending() {
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(100L);
+        order.setRestaurantId(1L);
+        order.setOrderType(OrderType.DINE_IN);
+        order.setEntityNo("Table-1");
+        order.setStatus(OrderStatus.PREPARING);
+
+        when(orderRepository.findById(100L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        OrderResponse mockResponse = new OrderResponse();
+        mockResponse.setOrderId(100L);
+        mockResponse.setStatus(OrderStatus.READY);
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenReturn(mockResponse);
+
+        com.kitchen.order.dto.request.UpdateOrderStatusRequest request = new com.kitchen.order.dto.request.UpdateOrderStatusRequest();
+        request.setStatus(OrderStatus.READY);
+
+        orderService.updateOrderStatus(100L, request);
+
+        verify(validationService, times(1)).updateEntityStatus("Table-1", 1L,
+                com.restaurant.service.model.OrderEntityStatus.BILL_PENDING);
     }
 
     @Test
@@ -1002,7 +1031,8 @@ public class OrderServiceImplTest {
 
         when(orderRepository.findById(100L)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(eq(1L), eq("Table-1"), any(), eq(100L))).thenReturn(false);
+        when(orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(eq(1L), eq("Table-1"), any(),
+                eq(100L))).thenReturn(false);
 
         OrderResponse mockResponse = new OrderResponse();
         mockResponse.setOrderId(100L);
@@ -1014,7 +1044,8 @@ public class OrderServiceImplTest {
 
         orderService.updateOrderStatus(100L, request);
 
-        verify(validationService, times(1)).updateEntityStatus("Table-1", 1L, com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
+        verify(validationService, times(1)).updateEntityStatus("Table-1", 1L,
+                com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
     }
 
     @Test
@@ -1028,7 +1059,8 @@ public class OrderServiceImplTest {
 
         when(orderRepository.findById(101L)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(eq(1L), eq("Table-2"), any(), eq(101L))).thenReturn(false);
+        when(orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(eq(1L), eq("Table-2"), any(),
+                eq(101L))).thenReturn(false);
 
         OrderResponse mockResponse = new OrderResponse();
         mockResponse.setOrderId(101L);
@@ -1037,7 +1069,8 @@ public class OrderServiceImplTest {
 
         orderService.cancelOrder(101L, "Customer left");
 
-        verify(validationService, times(1)).updateEntityStatus("Table-2", 1L, com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
+        verify(validationService, times(1)).updateEntityStatus("Table-2", 1L,
+                com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
     }
 
     @Test
@@ -1172,7 +1205,8 @@ public class OrderServiceImplTest {
         request.setItems(Collections.singletonList(itemRequest));
 
         // 10% order discount
-        request.setDiscount(new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("10.0"), "Loyalty Member"));
+        request.setDiscount(
+                new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("10.0"), "Loyalty Member"));
 
         RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
         restaurant.setRestaurantId(1L);
@@ -1333,7 +1367,8 @@ public class OrderServiceImplTest {
         request.setItems(Collections.singletonList(itemRequest));
 
         // Order discount: 10%
-        request.setDiscount(new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("10.0"), "Manager Discount"));
+        request.setDiscount(
+                new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("10.0"), "Manager Discount"));
 
         RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
         restaurant.setRestaurantId(1L);
@@ -1431,7 +1466,8 @@ public class OrderServiceImplTest {
         });
 
         // Act
-        OrderDiscountRequest discountReq = new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("20.0"), "Staff Promo");
+        OrderDiscountRequest discountReq = new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("20.0"),
+                "Staff Promo");
         OrderResponse response = orderService.applyOrderDiscount(10L, discountReq);
 
         // Assert
@@ -1507,7 +1543,8 @@ public class OrderServiceImplTest {
         order.setPaymentStatus(PaymentStatus.COMPLETED);
         when(orderRepository.findById(10L)).thenReturn(Optional.of(order));
 
-        OrderDiscountRequest discountReq = new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("10.0"), "Promo");
+        OrderDiscountRequest discountReq = new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("10.0"),
+                "Promo");
         assertThrows(IllegalArgumentException.class, () -> orderService.applyOrderDiscount(10L, discountReq));
     }
 
@@ -1519,7 +1556,8 @@ public class OrderServiceImplTest {
         order.setPaymentStatus(PaymentStatus.COMPLETED);
         when(orderRepository.findById(10L)).thenReturn(Optional.of(order));
 
-        OrderDiscountRequest discountReq = new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("10.0"), "Promo");
+        OrderDiscountRequest discountReq = new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("10.0"),
+                "Promo");
         assertThrows(IllegalArgumentException.class, () -> orderService.applyOrderDiscount(10L, discountReq));
     }
 
@@ -1650,7 +1688,8 @@ public class OrderServiceImplTest {
         entityResp.setEntityNo("Table-2");
         entityResp.setOrderEntityType("TABLE");
         when(validationService.validateEntity("Table-2", 1L)).thenReturn(entityResp);
-        when(orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(eq(1L), eq("Table-1"), anyList(), eq(202L))).thenReturn(false);
+        when(orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(eq(1L), eq("Table-1"), anyList(),
+                eq(202L))).thenReturn(false);
         when(orderRepository.save(any(OrderDAO.class))).thenAnswer(inv -> inv.getArgument(0));
         when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenReturn(new OrderResponse());
 
@@ -1663,8 +1702,10 @@ public class OrderServiceImplTest {
         // Assert
         assertEquals("Table-2", existingOrder.getEntityNo());
         assertEquals("TABLE", existingOrder.getOrderEntityType());
-        verify(validationService, times(1)).updateEntityStatus("Table-2", 1L, com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
-        verify(validationService, times(1)).updateEntityStatus("Table-1", 1L, com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
+        verify(validationService, times(1)).updateEntityStatus("Table-2", 1L,
+                com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
+        verify(validationService, times(1)).updateEntityStatus("Table-1", 1L,
+                com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
     }
 
     @Test
@@ -1706,6 +1747,3 @@ public class OrderServiceImplTest {
         assertThrows(IllegalArgumentException.class, () -> orderService.updateOrder(205L, updateReq));
     }
 }
-
-
-
