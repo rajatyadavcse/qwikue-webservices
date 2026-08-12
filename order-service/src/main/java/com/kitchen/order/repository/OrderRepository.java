@@ -15,6 +15,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import com.kitchen.order.repository.projection.OrderStatusCountProjection;
+import com.kitchen.order.repository.projection.OrderTypeRevenueProjection;
+import com.kitchen.order.repository.projection.PaymentModeRevenueProjection;
+import com.kitchen.order.repository.projection.RevenueSummaryProjection;
+import com.kitchen.order.repository.projection.SubPaymentModeRevenueProjection;
+
 @Repository
 public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
 
@@ -65,6 +71,90 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
     /** Fetch the latest active order for a given entity in a restaurant. */
     Optional<OrderDAO> findFirstByRestaurantIdAndEntityNoAndStatusInOrderByCreatedAtDesc(
             Long restaurantId, String entityNo, List<OrderStatus> statuses);
+
+    /** Aggregate overall revenue summary for a restaurant within a date range and status list. */
+    @Query("SELECT " +
+           "COALESCE(SUM(o.totalAmount), 0) AS totalRevenue, " +
+           "COALESCE(SUM(o.subTotal), 0) AS netSubTotal, " +
+           "COALESCE(SUM(o.taxAmount), 0) AS totalTax, " +
+           "COALESCE(SUM(o.serviceChargeAmount), 0) AS totalServiceCharge, " +
+           "COALESCE(SUM(o.discountAmount + o.orderDiscountAmount), 0) AS totalDiscount, " +
+           "COUNT(o.orderId) AS totalOrders " +
+           "FROM OrderDAO o " +
+           "WHERE o.restaurantId = :restaurantId " +
+           "AND o.status IN :statuses " +
+           "AND (cast(:start as java.time.LocalDateTime) IS NULL OR o.createdAt >= :start) " +
+           "AND (cast(:end as java.time.LocalDateTime) IS NULL OR o.createdAt < :end)")
+    RevenueSummaryProjection getRevenueSummary(
+            @Param("restaurantId") Long restaurantId,
+            @Param("statuses") List<OrderStatus> statuses,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    /** Aggregate revenue by payment mode for a restaurant within a date range and status list. */
+    @Query("SELECT " +
+           "o.paymentMode AS paymentMode, " +
+           "COALESCE(SUM(o.totalAmount), 0) AS amount, " +
+           "COUNT(o.orderId) AS orderCount " +
+           "FROM OrderDAO o " +
+           "WHERE o.restaurantId = :restaurantId " +
+           "AND o.status IN :statuses " +
+           "AND (cast(:start as java.time.LocalDateTime) IS NULL OR o.createdAt >= :start) " +
+           "AND (cast(:end as java.time.LocalDateTime) IS NULL OR o.createdAt < :end) " +
+           "GROUP BY o.paymentMode")
+    List<PaymentModeRevenueProjection> getRevenueByPaymentMode(
+            @Param("restaurantId") Long restaurantId,
+            @Param("statuses") List<OrderStatus> statuses,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    /** Aggregate revenue by sub-payment mode for a restaurant within a date range and status list. */
+    @Query("SELECT " +
+           "COALESCE(cast(o.subPaymentMode as string), 'UNSPECIFIED') AS subPaymentMode, " +
+           "COALESCE(SUM(o.totalAmount), 0) AS amount, " +
+           "COUNT(o.orderId) AS orderCount " +
+           "FROM OrderDAO o " +
+           "WHERE o.restaurantId = :restaurantId " +
+           "AND o.status IN :statuses " +
+           "AND (cast(:start as java.time.LocalDateTime) IS NULL OR o.createdAt >= :start) " +
+           "AND (cast(:end as java.time.LocalDateTime) IS NULL OR o.createdAt < :end) " +
+           "GROUP BY o.subPaymentMode")
+    List<SubPaymentModeRevenueProjection> getRevenueBySubPaymentMode(
+            @Param("restaurantId") Long restaurantId,
+            @Param("statuses") List<OrderStatus> statuses,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    /** Aggregate revenue by order type for a restaurant within a date range and status list. */
+    @Query("SELECT " +
+           "o.orderType AS orderType, " +
+           "COALESCE(SUM(o.totalAmount), 0) AS amount, " +
+           "COUNT(o.orderId) AS orderCount " +
+           "FROM OrderDAO o " +
+           "WHERE o.restaurantId = :restaurantId " +
+           "AND o.status IN :statuses " +
+           "AND (cast(:start as java.time.LocalDateTime) IS NULL OR o.createdAt >= :start) " +
+           "AND (cast(:end as java.time.LocalDateTime) IS NULL OR o.createdAt < :end) " +
+           "GROUP BY o.orderType")
+    List<OrderTypeRevenueProjection> getRevenueByOrderType(
+            @Param("restaurantId") Long restaurantId,
+            @Param("statuses") List<OrderStatus> statuses,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    /** Aggregate order counts by status within a date range. */
+    @Query("SELECT " +
+           "o.status AS status, " +
+           "COUNT(o.orderId) AS orderCount " +
+           "FROM OrderDAO o " +
+           "WHERE o.restaurantId = :restaurantId " +
+           "AND (cast(:start as java.time.LocalDateTime) IS NULL OR o.createdAt >= :start) " +
+           "AND (cast(:end as java.time.LocalDateTime) IS NULL OR o.createdAt < :end) " +
+           "GROUP BY o.status")
+    List<OrderStatusCountProjection> getOrderStatusCounts(
+            @Param("restaurantId") Long restaurantId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
 }
 
 
