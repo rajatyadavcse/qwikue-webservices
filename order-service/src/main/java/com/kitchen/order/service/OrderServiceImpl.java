@@ -397,7 +397,8 @@ public class OrderServiceImpl implements IOrderService {
                 validationService.updateEntityStatus(saved.getEntityNo().trim(), saved.getRestaurantId(),
                         com.restaurant.service.model.OrderEntityStatus.BILL_PENDING);
             }
-        } else if (newStatus == OrderStatus.COMPLETED) {
+        } else if (newStatus == OrderStatus.COMPLETED || newStatus == OrderStatus.CANCELLED
+                || newStatus == OrderStatus.REJECTED) {
             releaseEntityIfNoActiveOrders(saved);
         }
 

@@ -19,6 +19,7 @@ import com.kitchen.order.dao.CustomerDAO;
 import com.kitchen.order.repository.CustomerRepository;
 import com.kitchen.order.repository.OrderRepository;
 import com.kitchen.order.repository.RestaurantTokenCounterRepository;
+import com.restaurant.service.model.OrderEntityStatus;
 import org.junit.jupiter.api.Test;
 import java.util.Optional;
 import java.time.LocalDate;
@@ -991,7 +992,7 @@ public class OrderServiceImplTest {
         assertEquals("TABLE", response.getOrderEntityType());
         verify(validationService, times(1)).validateEntity("Table-5", 1L);
         verify(validationService, times(1)).updateEntityStatus("Table-5", 1L,
-                com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
+                OrderEntityStatus.OCCUPIED);
     }
 
     @Test
@@ -1017,7 +1018,7 @@ public class OrderServiceImplTest {
         orderService.updateOrderStatus(100L, request);
 
         verify(validationService, times(1)).updateEntityStatus("Table-1", 1L,
-                com.restaurant.service.model.OrderEntityStatus.BILL_PENDING);
+                OrderEntityStatus.BILL_PENDING);
     }
 
     @Test
@@ -1045,7 +1046,36 @@ public class OrderServiceImplTest {
         orderService.updateOrderStatus(100L, request);
 
         verify(validationService, times(1)).updateEntityStatus("Table-1", 1L,
-                com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
+                OrderEntityStatus.AVAILABLE);
+    }
+
+    @Test
+    void updateOrderStatus_cancelled_releasesTableWhenNoOtherActiveOrders() {
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(100L);
+        order.setRestaurantId(1L);
+        order.setOrderType(OrderType.DINE_IN);
+        order.setEntityNo("Table-1");
+        order.setStatus(OrderStatus.PREPARING);
+
+        when(orderRepository.findById(100L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(eq(1L), eq("Table-1"), any(),
+                eq(100L))).thenReturn(false);
+
+        OrderResponse mockResponse = new OrderResponse();
+        mockResponse.setOrderId(100L);
+        mockResponse.setStatus(OrderStatus.CANCELLED);
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenReturn(mockResponse);
+
+        com.kitchen.order.dto.request.UpdateOrderStatusRequest request = new com.kitchen.order.dto.request.UpdateOrderStatusRequest();
+        request.setStatus(OrderStatus.CANCELLED);
+        request.setReason("Cancelled by customer");
+
+        orderService.updateOrderStatus(100L, request);
+
+        verify(validationService, times(1)).updateEntityStatus("Table-1", 1L,
+                OrderEntityStatus.AVAILABLE);
     }
 
     @Test
@@ -1070,7 +1100,7 @@ public class OrderServiceImplTest {
         orderService.cancelOrder(101L, "Customer left");
 
         verify(validationService, times(1)).updateEntityStatus("Table-2", 1L,
-                com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
+                OrderEntityStatus.AVAILABLE);
     }
 
     @Test
@@ -1703,9 +1733,9 @@ public class OrderServiceImplTest {
         assertEquals("Table-2", existingOrder.getEntityNo());
         assertEquals("TABLE", existingOrder.getOrderEntityType());
         verify(validationService, times(1)).updateEntityStatus("Table-2", 1L,
-                com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
+                OrderEntityStatus.OCCUPIED);
         verify(validationService, times(1)).updateEntityStatus("Table-1", 1L,
-                com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
+                OrderEntityStatus.AVAILABLE);
     }
 
     @Test
