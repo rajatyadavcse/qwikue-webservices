@@ -39,7 +39,7 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
-    @Column
+    @Column(unique = true)
     private String phone;
 
     @Column(nullable = false)

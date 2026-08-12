@@ -42,6 +42,14 @@ public class UserService {
             throw new ApiException("Email already in use: " + request.getEmail(), HttpStatus.CONFLICT);
         }
 
+        // Phone uniqueness check
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            String cleanPhone = request.getPhone().trim();
+            if (userRepository.existsByPhone(cleanPhone)) {
+                throw new ApiException("Phone number already in use: " + cleanPhone, HttpStatus.CONFLICT);
+            }
+        }
+
         User creator = userRepository.findByEmail(createdByEmail)
                 .orElseThrow(() -> new ApiException("Creator not found", HttpStatus.NOT_FOUND));
 
@@ -55,11 +63,11 @@ public class UserService {
         User user = User.builder()
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
-                .email(request.getEmail())
+                .email(request.getEmail().trim())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole())
                 .restaurantId(request.getRestaurantId())
-                .phone(request.getPhone())
+                .phone(request.getPhone() != null ? request.getPhone().trim() : null)
                 .isActive(true)
                 .build();
 
@@ -96,14 +104,20 @@ public class UserService {
 
         if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
         if (request.getLastName() != null) user.setLastName(request.getLastName());
-        if (request.getPhone() != null) user.setPhone(request.getPhone());
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            String cleanPhone = request.getPhone().trim();
+            if (!cleanPhone.equals(user.getPhone()) && userRepository.existsByPhone(cleanPhone)) {
+                throw new ApiException("Phone number already in use: " + cleanPhone, HttpStatus.CONFLICT);
+            }
+            user.setPhone(cleanPhone);
+        }
         if (request.getEmail() != null) {
             // Only check uniqueness if the email is actually changing
             if (!request.getEmail().equalsIgnoreCase(user.getEmail())
                     && userRepository.existsByEmail(request.getEmail())) {
                 throw new ApiException("Email already in use: " + request.getEmail(), HttpStatus.CONFLICT);
             }
-            user.setEmail(request.getEmail());
+            user.setEmail(request.getEmail().trim());
             // Re-trigger verification if email changed
             user.setIsEmailVerified(false);
         }

@@ -44,9 +44,9 @@ public class AuthService {
 
     @Transactional
     public AuthTokens login(LoginRequest request) {
-        // Spring Security calls loadUserByUsername(email) internally
+        // Spring Security calls loadUserByUsername(email/phone) internally
         Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+                new UsernamePasswordAuthenticationToken(request.getIdentifier().trim(), request.getPassword()));
 
         UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
         User user = principal.getUser();

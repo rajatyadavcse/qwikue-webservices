@@ -17,13 +17,25 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     private UserRepository userRepository;
 
     /**
-     * Spring Security calls this with the value passed to UsernamePasswordAuthenticationToken.
-     * After the refactor, that value is always the user's email address.
+     * Spring Security calls this with the identifier passed to UsernamePasswordAuthenticationToken.
+     * Identifier can be either the user's email address or a 10-digit phone number.
      */
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+    public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
+        if (identifier == null || identifier.isBlank()) {
+            throw new UsernameNotFoundException("Identifier cannot be empty");
+        }
+        String cleanIdentifier = identifier.trim();
+
+        User user;
+        if (cleanIdentifier.matches("^[0-9]{10}$")) {
+            user = userRepository.findByPhone(cleanIdentifier)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found with phone: " + cleanIdentifier));
+        } else {
+            user = userRepository.findByEmail(cleanIdentifier)
+                    .or(() -> userRepository.findByEmail(cleanIdentifier.toLowerCase()))
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + cleanIdentifier));
+        }
         return new UserPrincipal(user);
     }
 }

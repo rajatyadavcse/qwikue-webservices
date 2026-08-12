@@ -60,7 +60,7 @@ public class AuthController {
     // ── Login ─────────────────────────────────────────────────────────────────
 
     @PostMapping("/login")
-    @Operation(summary = "Login with email and password",
+    @Operation(summary = "Login with email or phone number and password",
             description = "Returns an access token in the response body and sets a secure HttpOnly " +
                           "refresh-token cookie. Never expose the cookie value to client-side JavaScript.")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request,
