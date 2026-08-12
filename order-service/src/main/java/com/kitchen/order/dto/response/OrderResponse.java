@@ -2,6 +2,7 @@ package com.kitchen.order.dto.response;
 
 import com.kitchen.order.enums.OrderStatus;
 import com.kitchen.order.enums.PaymentMode;
+import com.kitchen.order.enums.SubPaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.enums.OrderedBy;
 import com.kitchen.order.enums.OrderType;
@@ -46,6 +47,7 @@ public class OrderResponse {
     private CustomerResponse customer;
     private List<OrderItemResponse> items;
     private PaymentMode paymentMode;
+    private SubPaymentMode subPaymentMode;
     private PaymentStatus paymentStatus;
     private OrderedBy orderedBy;
     private String razorpayOrderId;

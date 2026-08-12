@@ -18,6 +18,14 @@ import org.springframework.web.client.RestClientException;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.restaurant.service.service.IRestaurantService;
+import com.restaurant.service.service.IMenuService;
+import com.restaurant.service.service.IOrderEntityService;
+import com.restaurant.service.model.Restaurant;
+import com.restaurant.service.model.OrderEntity;
+import com.restaurant.service.model.OrderEntityStatus;
+import com.restaurant.service.model.Menu;
+
 /**
  * Validates restaurant, table, and menu entities against the restaurant-service
  * using synchronous RestClient calls before an order is persisted.
@@ -32,13 +40,13 @@ public class RestaurantValidationService implements IRestaurantValidationService
     private RestClient restaurantServiceClient;
 
     @Autowired
-    private com.restaurant.service.service.IRestaurantService restaurantService;
+    private IRestaurantService restaurantService;
 
     @Autowired
-    private com.restaurant.service.service.IMenuService menuService;
+    private IMenuService menuService;
 
     @Autowired
-    private com.restaurant.service.service.IOrderEntityService orderEntityService;
+    private IOrderEntityService orderEntityService;
 
     // ── Inner response models (mirrors restaurant-service response shapes) ────
 

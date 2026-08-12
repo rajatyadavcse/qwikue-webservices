@@ -2,6 +2,7 @@ package com.kitchen.order.dao;
 
 import com.kitchen.order.enums.OrderStatus;
 import com.kitchen.order.enums.PaymentMode;
+import com.kitchen.order.enums.SubPaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.enums.OrderType;
 import com.kitchen.order.enums.DiscountType;
@@ -114,6 +115,10 @@ public class OrderDAO {
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_mode", nullable = false, length = 20)
     private PaymentMode paymentMode = PaymentMode.CASH;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sub_payment_mode", length = 20)
+    private SubPaymentMode subPaymentMode;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false, length = 20)

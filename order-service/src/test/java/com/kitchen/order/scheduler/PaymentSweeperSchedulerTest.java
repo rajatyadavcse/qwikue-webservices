@@ -6,6 +6,7 @@ import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.repository.OrderRepository;
 import com.kitchen.order.service.IOrderService;
+import com.kitchen.order.service.IRestaurantValidationService;
 import com.kitchen.order.service.RestaurantValidationService;
 import com.razorpay.Order;
 import com.razorpay.OrderClient;
@@ -41,7 +42,7 @@ public class PaymentSweeperSchedulerTest {
     private IOrderService orderService;
 
     @Mock
-    private RestaurantValidationService validationService;
+    private IRestaurantValidationService validationService;
 
     @InjectMocks
     private PaymentSweeperScheduler paymentSweeperScheduler;

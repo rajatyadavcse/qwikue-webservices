@@ -10,5 +10,5 @@ public interface IRestaurantValidationService {
 
     RestaurantValidationService.MenuResponse validateMenuAndGetPrice(Long menuId);
 
-    void updateEntityStatus(String entityNo, Long restaurantId, OrderEntityStatus status);
+    void updateEntityStatus(String entityNo, Long restaurantId, com.restaurant.service.model.OrderEntityStatus status);
 }

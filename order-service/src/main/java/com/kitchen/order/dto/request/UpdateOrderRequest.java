@@ -2,6 +2,7 @@ package com.kitchen.order.dto.request;
 
 import com.kitchen.order.enums.OrderType;
 import com.kitchen.order.enums.PaymentMode;
+import com.kitchen.order.enums.SubPaymentMode;
 import jakarta.validation.Valid;
 import lombok.Data;
 
@@ -45,6 +46,11 @@ public class UpdateOrderRequest {
      * Optional updated payment mode.
      */
     private PaymentMode paymentMode;
+
+    /**
+     * Optional sub-payment mode (CASH, CARD, UPI) for in-restaurant CASH orders.
+     */
+    private SubPaymentMode subPaymentMode;
 
     /**
      * Optional updated order-level discount.

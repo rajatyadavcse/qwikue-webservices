@@ -5,6 +5,7 @@ import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.repository.OrderRepository;
 import com.kitchen.order.service.IOrderService;
+import com.kitchen.order.service.IRestaurantValidationService;
 import com.kitchen.order.service.RestaurantValidationService;
 import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
@@ -36,7 +37,7 @@ public class PaymentSweeperScheduler {
     private IOrderService orderService;
 
     @Autowired
-    private RestaurantValidationService validationService;
+    private IRestaurantValidationService validationService;
 
     @Value("${app.payment-sweeper.stale-minutes:15}")
     private int staleMinutes;

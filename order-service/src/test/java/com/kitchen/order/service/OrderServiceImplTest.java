@@ -11,6 +11,7 @@ import com.kitchen.order.dto.response.RestaurantChargeDto;
 import com.kitchen.order.enums.DiscountType;
 import com.kitchen.order.enums.OrderStatus;
 import com.kitchen.order.enums.PaymentMode;
+import com.kitchen.order.enums.SubPaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.enums.OrderedBy;
 import com.kitchen.order.enums.OrderType;
@@ -61,7 +62,7 @@ public class OrderServiceImplTest {
     private RestaurantTokenCounterRepository tokenCounterRepository;
 
     @Mock
-    private RestaurantValidationService validationService;
+    private IRestaurantValidationService validationService;
 
     @Mock
     private OrderMapper orderMapper;
@@ -1775,5 +1776,96 @@ public class OrderServiceImplTest {
         updateReq.setItems(List.of(item));
 
         assertThrows(IllegalArgumentException.class, () -> orderService.updateOrder(205L, updateReq));
+    }
+
+    @Test
+    public void testUpdateOrderWithSubPaymentModeSuccess() {
+        OrderDAO cashOrder = new OrderDAO();
+        cashOrder.setOrderId(300L);
+        cashOrder.setRestaurantId(1L);
+        cashOrder.setOrderType(OrderType.DINE_IN);
+        cashOrder.setEntityNo("Table-1");
+        cashOrder.setStatus(OrderStatus.PREPARING);
+        cashOrder.setPaymentMode(PaymentMode.CASH);
+        cashOrder.setPaymentStatus(PaymentStatus.PENDING);
+
+        when(orderRepository.findById(300L)).thenReturn(Optional.of(cashOrder));
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setPaymentModes(List.of(PaymentMode.CASH, PaymentMode.ONLINE));
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            OrderResponse response = new OrderResponse();
+            response.setOrderId(dao.getOrderId());
+            response.setPaymentMode(dao.getPaymentMode());
+            response.setSubPaymentMode(dao.getSubPaymentMode());
+            return response;
+        });
+
+        UpdateOrderRequest updateReq = new UpdateOrderRequest();
+        updateReq.setSubPaymentMode(SubPaymentMode.UPI);
+
+        OrderResponse response = orderService.updateOrder(300L, updateReq);
+
+        assertEquals(PaymentMode.CASH, response.getPaymentMode());
+        assertEquals(SubPaymentMode.UPI, response.getSubPaymentMode());
+        assertEquals(SubPaymentMode.UPI, cashOrder.getSubPaymentMode());
+    }
+
+    @Test
+    public void testUpdateOrderWithSubPaymentModeFailsForOnlineOrder() {
+        OrderDAO onlineOrder = new OrderDAO();
+        onlineOrder.setOrderId(301L);
+        onlineOrder.setRestaurantId(1L);
+        onlineOrder.setStatus(OrderStatus.PREPARING);
+        onlineOrder.setPaymentMode(PaymentMode.ONLINE);
+        onlineOrder.setPaymentStatus(PaymentStatus.PENDING);
+
+        when(orderRepository.findById(301L)).thenReturn(Optional.of(onlineOrder));
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setPaymentModes(List.of(PaymentMode.CASH, PaymentMode.ONLINE));
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        UpdateOrderRequest updateReq = new UpdateOrderRequest();
+        updateReq.setSubPaymentMode(SubPaymentMode.CARD);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> orderService.updateOrder(301L, updateReq));
+        assertEquals("subPaymentMode is only allowed when paymentMode is CASH", ex.getMessage());
+    }
+
+    @Test
+    public void testUpdateOrderSwitchingToOnlineClearsSubPaymentMode() {
+        OrderDAO cashOrder = new OrderDAO();
+        cashOrder.setOrderId(302L);
+        cashOrder.setRestaurantId(1L);
+        cashOrder.setStatus(OrderStatus.PENDING);
+        cashOrder.setPaymentMode(PaymentMode.CASH);
+        cashOrder.setSubPaymentMode(SubPaymentMode.CASH);
+        cashOrder.setPaymentStatus(PaymentStatus.PENDING);
+
+        when(orderRepository.findById(302L)).thenReturn(Optional.of(cashOrder));
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setPaymentModes(List.of(PaymentMode.CASH, PaymentMode.ONLINE));
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            OrderResponse response = new OrderResponse();
+            response.setOrderId(dao.getOrderId());
+            response.setPaymentMode(dao.getPaymentMode());
+            response.setSubPaymentMode(dao.getSubPaymentMode());
+            return response;
+        });
+
+        UpdateOrderRequest updateReq = new UpdateOrderRequest();
+        updateReq.setPaymentMode(PaymentMode.ONLINE);
+
+        OrderResponse response = orderService.updateOrder(302L, updateReq);
+
+        assertEquals(PaymentMode.ONLINE, response.getPaymentMode());
+        assertNull(response.getSubPaymentMode());
+        assertNull(cashOrder.getSubPaymentMode());
     }
 }

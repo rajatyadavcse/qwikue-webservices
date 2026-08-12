@@ -14,10 +14,12 @@ import com.kitchen.order.dto.response.OrderAppliedCharge;
 import com.kitchen.order.dto.response.RestaurantChargeDto;
 import com.kitchen.order.enums.OrderStatus;
 import com.kitchen.order.enums.PaymentMode;
+import com.kitchen.order.enums.SubPaymentMode;
 import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.enums.OrderedBy;
 import com.kitchen.order.enums.OrderType;
 import com.kitchen.order.enums.DiscountType;
+import com.restaurant.service.model.OrderEntityStatus;
 import com.kitchen.order.exception.InvalidStatusTransitionException;
 import com.kitchen.order.exception.ResourceNotFoundException;
 import com.kitchen.order.exception.ExternalServiceException;
@@ -153,6 +155,12 @@ public class OrderServiceImpl implements IOrderService {
             throw new IllegalArgumentException("Payment mode " + paymentMode + " is not supported by this restaurant");
         }
         order.setPaymentMode(paymentMode);
+        if (request.getSubPaymentMode() != null) {
+            if (paymentMode != PaymentMode.CASH) {
+                throw new IllegalArgumentException("subPaymentMode is only allowed when paymentMode is CASH");
+            }
+            order.setSubPaymentMode(request.getSubPaymentMode());
+        }
         order.setPaymentStatus(PaymentStatus.PENDING);
         order.setOrderedBy(request.getOrderedBy() != null ? request.getOrderedBy() : OrderedBy.CUSTOMER);
         if (order.getPaymentMode() == PaymentMode.CASH) {
@@ -225,7 +233,7 @@ public class OrderServiceImpl implements IOrderService {
         if (saved.getOrderType() == OrderType.DINE_IN && saved.getEntityNo() != null
                 && !saved.getEntityNo().trim().isEmpty()) {
             validationService.updateEntityStatus(saved.getEntityNo().trim(), saved.getRestaurantId(),
-                    com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
+                    OrderEntityStatus.OCCUPIED);
         }
 
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
@@ -606,7 +614,7 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         OrderDAO saved = orderRepository.save(order);
-        log.info("Order-level discount removed successfully for orderId={}, new totalAmount={}", saved.getOrderId(),
+        log.info("Order-level discount removed successfully for orderId={}, new totalAmount={}", orderId,
                 saved.getTotalAmount());
 
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
@@ -618,6 +626,7 @@ public class OrderServiceImpl implements IOrderService {
     }
 
     @Override
+    @Transactional
     public OrderResponse updateOrder(Long orderId, UpdateOrderRequest request) {
         log.info("Updating order orderId={}", orderId);
 
@@ -665,7 +674,7 @@ public class OrderServiceImpl implements IOrderService {
             if (order.getOrderType() == OrderType.DINE_IN && order.getEntityNo() != null
                     && !order.getEntityNo().trim().isEmpty()) {
                 validationService.updateEntityStatus(order.getEntityNo().trim(), order.getRestaurantId(),
-                        com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
+                        OrderEntityStatus.OCCUPIED);
             }
             if (oldOrderType == OrderType.DINE_IN && oldEntityNo != null && !oldEntityNo.trim().isEmpty()) {
                 releaseEntityIfNoActiveOrders(oldEntityNo, order.getRestaurantId(), order.getOrderId());
@@ -706,6 +715,9 @@ public class OrderServiceImpl implements IOrderService {
                         "Payment mode " + newPaymentMode + " is not supported by this restaurant");
             }
             order.setPaymentMode(newPaymentMode);
+            if (newPaymentMode == PaymentMode.ONLINE) {
+                order.setSubPaymentMode(null);
+            }
             if (newPaymentMode == PaymentMode.CASH && order.getStatus() == OrderStatus.PAYMENT_PENDING) {
                 order.setStatus(OrderStatus.PENDING);
                 if (order.getTokenNo() == null) {
@@ -717,6 +729,14 @@ public class OrderServiceImpl implements IOrderService {
                     && order.getPaymentStatus() == PaymentStatus.PENDING) {
                 order.setStatus(OrderStatus.PAYMENT_PENDING);
             }
+        }
+
+        // Update subPaymentMode if provided
+        if (request.getSubPaymentMode() != null) {
+            if (order.getPaymentMode() != PaymentMode.CASH) {
+                throw new IllegalArgumentException("subPaymentMode is only allowed when paymentMode is CASH");
+            }
+            order.setSubPaymentMode(request.getSubPaymentMode());
         }
 
         // 6. Update items / recalculate pricing
@@ -904,7 +924,7 @@ public class OrderServiceImpl implements IOrderService {
                     excludeOrderId);
             if (!hasOtherActiveOrders) {
                 validationService.updateEntityStatus(entityNo.trim(), restaurantId,
-                        com.restaurant.service.model.OrderEntityStatus.AVAILABLE);
+                        OrderEntityStatus.AVAILABLE);
             }
         }
     }
