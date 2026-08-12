@@ -1,12 +1,14 @@
 spring:
+  main:
+    lazy-initialization: true
   datasource:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres?sslmode=require
     username: postgres.iglezaprcevbzjldkutb
     password: MLshZRv51jdYvLhF
     hikari:
-      maximum-pool-size: 5
-      minimum-idle: 2
+      maximum-pool-size: 3
+      minimum-idle: 1
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
@@ -14,9 +16,18 @@ spring:
     hibernate:
       ddl-auto: validate
 
+server:
+  tomcat:
+    threads:
+      max: 20
+      min-spare: 2
+    max-connections: 100
+    accept-count: 20
+
 cors:
   allowed-origins: https://kitchen-frontend-customer.vercel.app,https://kitchen-frontend-admin.vercel.app,http://localhost:3001,http://localhost:3000,http://localhost:3002,https://kitchen-frontend-admin-git-dev-avanishparashars-projects.vercel.app,https://kitchen-frontend-customer-git-dev-avanishparashars-projects.vercel.app,https://kitchen-frontend-shell-git-dev-avanishparashars-projects.vercel.app,https://kitchen-frontend-shell.vercel.app,https://qwikue.vercel.app,https://www.qwikue.in
 
 springdoc:
   swagger-ui:
     enabled: true
+

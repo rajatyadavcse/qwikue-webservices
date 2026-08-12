@@ -26,7 +26,8 @@ COPY order-service/src order-service/src
 COPY qwikue-app/src qwikue-app/src
 
 # Compile and package everything, skipping tests
-RUN ./mvnw clean package -DskipTests -q
+RUN ./mvnw clean package -Dmaven.test.skip=true -q
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 2 – Runtime
@@ -47,8 +48,20 @@ COPY --from=builder /app/qwikue-app/target/qwikue-app-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
 
 # Activate the production Spring profile and forward the container port.
-# Render sets $PORT automatically — we pass it through SERVER_PORT.
+# Configure JVM memory constraints for Render 512MB limit:
+# - Serial GC reduces GC memory overhead (~50-80MB saved)
+# - Max heap set to 256m, initial heap 128m
+# - Max metaspace capped at 128m
+# - Thread stack reduced to 512k (saves ~50% per thread)
+# - TieredStopAtLevel=1 drastically reduces JIT compilation code cache memory
 ENTRYPOINT ["java", \
+  "-XX:+UseSerialGC", \
+  "-Xms128m", \
+  "-Xmx256m", \
+  "-XX:MaxMetaspaceSize=128m", \
+  "-Xss512k", \
+  "-XX:TieredStopAtLevel=1", \
   "-Dspring.profiles.active=production", \
   "-Dserver.port=${PORT:-8080}", \
   "-jar", "app.jar"]
+
