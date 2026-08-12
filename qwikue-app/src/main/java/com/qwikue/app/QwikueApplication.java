@@ -6,6 +6,9 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import jakarta.annotation.PostConstruct;
+import java.util.TimeZone;
+
 @SpringBootApplication(scanBasePackages = {
     "com.microservice.LoginService",
     "com.restaurant.service",
@@ -24,6 +27,12 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 })
 @EnableScheduling
 public class QwikueApplication {
+
+    @PostConstruct
+    public void init() {
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kolkata"));
+    }
+
     public static void main(String[] args) {
         SpringApplication.run(QwikueApplication.class, args);
     }

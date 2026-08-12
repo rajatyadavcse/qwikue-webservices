@@ -55,6 +55,7 @@ EXPOSE 8080
 # - Thread stack reduced to 512k (saves ~50% per thread)
 # - TieredStopAtLevel=1 drastically reduces JIT compilation code cache memory
 ENTRYPOINT ["java", \
+  "-Duser.timezone=Asia/Kolkata", \
   "-XX:+UseSerialGC", \
   "-Xms128m", \
   "-Xmx256m", \
