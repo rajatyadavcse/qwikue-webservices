@@ -4,6 +4,7 @@ import com.restaurant.service.dao.OrderEntityDAO;
 import com.restaurant.service.dao.OrderEntityId;
 import com.restaurant.service.exception.ResourceNotFoundException;
 import com.restaurant.service.mapper.OrderEntityMapper;
+import com.restaurant.service.event.OrderEntityUpdateEvent;
 import com.restaurant.service.model.OrderEntity;
 import com.restaurant.service.model.OrderEntityStatus;
 import com.restaurant.service.model.OrderEntityType;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,6 +42,9 @@ public class OrderEntityServiceImplTest {
 
     @Mock
     private OrderEntityMapper orderEntityMapper;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private OrderEntityServiceImpl orderEntityService;
@@ -75,6 +80,7 @@ public class OrderEntityServiceImplTest {
 
         assertEquals("AVAILABLE", sampleEntity.getStatus());
         assertNotNull(created);
+        verify(eventPublisher).publishEvent(any(OrderEntityUpdateEvent.class));
     }
 
     @Test
@@ -84,6 +90,23 @@ public class OrderEntityServiceImplTest {
         sampleEntity.setStatus("INVALID_STATUS");
 
         assertThrows(IllegalArgumentException.class, () -> orderEntityService.createOrderEntity(sampleEntity));
+    }
+
+    @Test
+    void updateOrderEntity_success() {
+        OrderEntityId id = new OrderEntityId();
+        id.setEntityNo("Table-1");
+        id.setRestaurantId(1L);
+
+        when(orderEntityRepository.existsById(id)).thenReturn(true);
+        when(orderEntityMapper.orderEntityToOrderEntityDAO(sampleEntity)).thenReturn(sampleDAO);
+        when(orderEntityRepository.save(sampleDAO)).thenReturn(sampleDAO);
+        when(orderEntityMapper.orderEntityDAOToOrderEntity(sampleDAO)).thenReturn(sampleEntity);
+
+        OrderEntity updated = orderEntityService.updateOrderEntity(sampleEntity);
+
+        assertNotNull(updated);
+        verify(eventPublisher).publishEvent(any(OrderEntityUpdateEvent.class));
     }
 
     @Test
@@ -101,6 +124,7 @@ public class OrderEntityServiceImplTest {
         assertEquals("OCCUPIED", sampleDAO.getStatus());
         assertNotNull(updated);
         verify(orderEntityRepository).save(sampleDAO);
+        verify(eventPublisher).publishEvent(any(OrderEntityUpdateEvent.class));
     }
 
     @Test

@@ -537,6 +537,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /entities/restaurant/{restaurantId}/stream:
+    get:
+      tags:
+        - OrderEntity
+      summary: Stream entity status updates for restaurant dashboards
+      description: Standard HTTP-based Server-Sent Events (SSE) stream for live entity status changes.
+      operationId: streamRestaurantEntityUpdates
+      parameters:
+        - name: restaurantId
+          in: path
+          description: Restaurant ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+      responses:
+        '200':
+          description: Server-sent events stream established
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
   /entities/{entityNo}/restaurant/{restaurantId}:
     get:
       tags:

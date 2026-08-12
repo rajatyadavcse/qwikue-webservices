@@ -4,10 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import com.restaurant.service.dao.OrderEntityDAO;
 import com.restaurant.service.dao.OrderEntityId;
+import com.restaurant.service.event.OrderEntityUpdateEvent;
 import com.restaurant.service.exception.ResourceAlreadyExistsException;
 import com.restaurant.service.exception.ResourceNotFoundException;
 import com.restaurant.service.mapper.OrderEntityMapper;
@@ -26,6 +28,9 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
 
     @Autowired
     OrderEntityMapper orderEntityMapper;
+
+    @Autowired
+    ApplicationEventPublisher eventPublisher;
 
     @Override
     public OrderEntity createOrderEntity(OrderEntity orderEntity) {
@@ -60,7 +65,9 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
         }
 
         OrderEntityDAO orderEntityDAO = orderEntityMapper.orderEntityToOrderEntityDAO(orderEntity);
-        return orderEntityMapper.orderEntityDAOToOrderEntity(orderEntityRepository.save(orderEntityDAO));
+        OrderEntity created = orderEntityMapper.orderEntityDAOToOrderEntity(orderEntityRepository.save(orderEntityDAO));
+        eventPublisher.publishEvent(new OrderEntityUpdateEvent(this, created));
+        return created;
     }
 
     @Override
@@ -84,7 +91,9 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
         }
 
         OrderEntityDAO orderEntityDAO = orderEntityMapper.orderEntityToOrderEntityDAO(orderEntity);
-        return orderEntityMapper.orderEntityDAOToOrderEntity(orderEntityRepository.save(orderEntityDAO));
+        OrderEntity updated = orderEntityMapper.orderEntityDAOToOrderEntity(orderEntityRepository.save(orderEntityDAO));
+        eventPublisher.publishEvent(new OrderEntityUpdateEvent(this, updated));
+        return updated;
     }
 
     @Override
@@ -101,7 +110,9 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
                         + " and restaurantId " + restaurantId + " not found"));
 
         orderEntityDAO.setStatus(status.name());
-        return orderEntityMapper.orderEntityDAOToOrderEntity(orderEntityRepository.save(orderEntityDAO));
+        OrderEntity updated = orderEntityMapper.orderEntityDAOToOrderEntity(orderEntityRepository.save(orderEntityDAO));
+        eventPublisher.publishEvent(new OrderEntityUpdateEvent(this, updated));
+        return updated;
     }
 
     @Override
