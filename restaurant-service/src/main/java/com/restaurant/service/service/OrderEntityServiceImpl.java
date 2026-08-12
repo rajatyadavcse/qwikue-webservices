@@ -122,11 +122,29 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
         if (restaurantId == null) {
             throw new ResourceNotFoundException("Record with restaurantId " + restaurantId + " not found");
         }
-        if (orderEntityRepository.findAllByOrderEntityIdRestaurantId(restaurantId).isEmpty()) {
+        List<OrderEntityDAO> orderEntityDAOs = orderEntityRepository.findAllByOrderEntityIdRestaurantId(restaurantId);
+        if (orderEntityDAOs.isEmpty()) {
             return new ArrayList<>();
         }
-        return orderEntityMapper.orderEntityDAOListToOrderEntityList(
-                orderEntityRepository.findAllByOrderEntityIdRestaurantId(restaurantId));
+        List<OrderEntity> orderEntities = orderEntityMapper.orderEntityDAOListToOrderEntityList(orderEntityDAOs);
+
+        boolean canBeSortedAsLong = orderEntities.stream().allMatch(entity -> {
+            if (entity == null || entity.getEntityNo() == null) {
+                return false;
+            }
+            try {
+                Long.parseLong(entity.getEntityNo().trim());
+                return true;
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        });
+
+        if (canBeSortedAsLong) {
+            orderEntities.sort(java.util.Comparator.comparingLong(entity -> Long.parseLong(entity.getEntityNo().trim())));
+        }
+
+        return orderEntities;
     }
 
     @Override
