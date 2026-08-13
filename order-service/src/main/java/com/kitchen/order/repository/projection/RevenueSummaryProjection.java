@@ -9,4 +9,5 @@ public interface RevenueSummaryProjection {
     BigDecimal getTotalServiceCharge();
     BigDecimal getTotalDiscount();
     Long getTotalOrders();
+    Double getAveragePrepTime();
 }

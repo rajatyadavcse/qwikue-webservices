@@ -47,6 +47,7 @@ class DashboardAnalyticsServiceImplTest {
         when(summaryMock.getTotalServiceCharge()).thenReturn(new BigDecimal("50.00"));
         when(summaryMock.getTotalDiscount()).thenReturn(new BigDecimal("20.00"));
         when(summaryMock.getTotalOrders()).thenReturn(4L);
+        when(summaryMock.getAveragePrepTime()).thenReturn(15.5);
 
         when(orderRepository.getRevenueSummary(eq(restaurantId), anyList(), any(LocalDateTime.class), any(LocalDateTime.class)))
                 .thenReturn(summaryMock);
@@ -98,8 +99,28 @@ class DashboardAnalyticsServiceImplTest {
         when(completedStatusMock.getStatus()).thenReturn(OrderStatus.COMPLETED);
         when(completedStatusMock.getOrderCount()).thenReturn(4L);
 
+        OrderStatusCountProjection cancelledStatusMock = mock(OrderStatusCountProjection.class);
+        when(cancelledStatusMock.getStatus()).thenReturn(OrderStatus.CANCELLED);
+        when(cancelledStatusMock.getOrderCount()).thenReturn(2L);
+
+        OrderStatusCountProjection rejectedStatusMock = mock(OrderStatusCountProjection.class);
+        when(rejectedStatusMock.getStatus()).thenReturn(OrderStatus.REJECTED);
+        when(rejectedStatusMock.getOrderCount()).thenReturn(1L);
+
+        OrderStatusCountProjection pendingStatusMock = mock(OrderStatusCountProjection.class);
+        when(pendingStatusMock.getStatus()).thenReturn(OrderStatus.PENDING);
+        when(pendingStatusMock.getOrderCount()).thenReturn(3L);
+
+        OrderStatusCountProjection preparingStatusMock = mock(OrderStatusCountProjection.class);
+        when(preparingStatusMock.getStatus()).thenReturn(OrderStatus.PREPARING);
+        when(preparingStatusMock.getOrderCount()).thenReturn(5L);
+
+        OrderStatusCountProjection readyStatusMock = mock(OrderStatusCountProjection.class);
+        when(readyStatusMock.getStatus()).thenReturn(OrderStatus.READY);
+        when(readyStatusMock.getOrderCount()).thenReturn(2L);
+
         when(orderRepository.getOrderStatusCounts(eq(restaurantId), any(LocalDateTime.class), any(LocalDateTime.class)))
-                .thenReturn(List.of(completedStatusMock));
+                .thenReturn(List.of(completedStatusMock, cancelledStatusMock, rejectedStatusMock, pendingStatusMock, preparingStatusMock, readyStatusMock));
 
         // Execute
         DashboardRevenueResponse response = dashboardAnalyticsService.getDashboardRevenue(restaurantId, fromDate, toDate, null);
@@ -119,6 +140,10 @@ class DashboardAnalyticsServiceImplTest {
         assertEquals(new BigDecimal("20.00"), response.getSummary().getTotalDiscount());
         assertEquals(4L, response.getSummary().getTotalOrders());
         assertEquals(new BigDecimal("250.00"), response.getSummary().getAverageOrderValue());
+        assertEquals(2L, response.getSummary().getCancelledOrdersCount());
+        assertEquals(1L, response.getSummary().getRejectedOrdersCount());
+        assertEquals(10L, response.getSummary().getActiveOrdersCount());
+        assertEquals(15.5, response.getSummary().getAveragePrepTime());
 
         // Payment mode assertions
         assertNotNull(response.getPaymentBreakdown());
@@ -141,7 +166,7 @@ class DashboardAnalyticsServiceImplTest {
         assertEquals(new BigDecimal("30.00"), response.getOrderTypeBreakdown().get(1).getPercentage());
 
         // Order status count assertions
-        assertEquals(1, response.getOrderStatusBreakdown().size());
+        assertEquals(6, response.getOrderStatusBreakdown().size());
         assertEquals(OrderStatus.COMPLETED, response.getOrderStatusBreakdown().get(0).getStatus());
         assertEquals(4L, response.getOrderStatusBreakdown().get(0).getOrderCount());
     }

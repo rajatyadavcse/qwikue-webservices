@@ -19,4 +19,8 @@ public class RevenueSummaryDTO {
     private BigDecimal totalDiscount;
     private Long totalOrders;
     private BigDecimal averageOrderValue;
+    private Long cancelledOrdersCount;
+    private Long rejectedOrdersCount;
+    private Long activeOrdersCount;
+    private Double averagePrepTime;
 }

@@ -90,6 +90,38 @@ public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService
                 ? totalRevenue.divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
 
+        Double averagePrepTime = (summaryProj != null && summaryProj.getAveragePrepTime() != null)
+                ? summaryProj.getAveragePrepTime()
+                : 0.0;
+
+        // 2. Order Status Counts (all statuses for this date range)
+        List<OrderStatusCountProjection> statusCountProjs = orderRepository.getOrderStatusCounts(restaurantId, start, end);
+        List<OrderStatusCountDTO> statusCountList = new ArrayList<>();
+        
+        Long cancelledOrdersCount = 0L;
+        Long rejectedOrdersCount = 0L;
+        Long activeOrdersCount = 0L;
+
+        if (statusCountProjs != null) {
+            for (OrderStatusCountProjection proj : statusCountProjs) {
+                OrderStatus status = proj.getStatus();
+                Long count = proj.getOrderCount() != null ? proj.getOrderCount() : 0L;
+                
+                statusCountList.add(OrderStatusCountDTO.builder()
+                        .status(status)
+                        .orderCount(count)
+                        .build());
+                        
+                if (status == OrderStatus.CANCELLED) {
+                    cancelledOrdersCount = count;
+                } else if (status == OrderStatus.REJECTED) {
+                    rejectedOrdersCount = count;
+                } else if (status == OrderStatus.PENDING || status == OrderStatus.PREPARING || status == OrderStatus.READY) {
+                    activeOrdersCount += count;
+                }
+            }
+        }
+
         RevenueSummaryDTO summaryDTO = RevenueSummaryDTO.builder()
                 .totalRevenue(totalRevenue)
                 .netSubTotal(netSubTotal)
@@ -98,9 +130,13 @@ public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService
                 .totalDiscount(totalDiscount)
                 .totalOrders(totalOrders)
                 .averageOrderValue(averageOrderValue)
+                .cancelledOrdersCount(cancelledOrdersCount)
+                .rejectedOrdersCount(rejectedOrdersCount)
+                .activeOrdersCount(activeOrdersCount)
+                .averagePrepTime(averagePrepTime)
                 .build();
 
-        // 2. Payment Mode Breakdown
+        // 3. Payment Mode Breakdown
         List<PaymentModeRevenueProjection> paymentModeProjs = orderRepository.getRevenueByPaymentMode(restaurantId, targetStatuses, start, end);
         List<PaymentModeBreakdownDTO> paymentModeList = new ArrayList<>();
         if (paymentModeProjs != null) {
@@ -117,7 +153,7 @@ public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService
             }
         }
 
-        // 3. SubPaymentMode Breakdown
+        // 4. SubPaymentMode Breakdown
         List<SubPaymentModeRevenueProjection> subPaymentModeProjs = orderRepository.getRevenueBySubPaymentMode(restaurantId, targetStatuses, start, end);
         List<SubPaymentModeBreakdownDTO> subPaymentModeList = new ArrayList<>();
         if (subPaymentModeProjs != null) {
@@ -139,7 +175,7 @@ public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService
                 .bySubPaymentMode(subPaymentModeList)
                 .build();
 
-        // 4. Order Type Breakdown (DINE_IN vs TAKE_AWAY)
+        // 5. Order Type Breakdown (DINE_IN vs TAKE_AWAY)
         List<OrderTypeRevenueProjection> orderTypeProjs = orderRepository.getRevenueByOrderType(restaurantId, targetStatuses, start, end);
         List<OrderTypeBreakdownDTO> orderTypeList = new ArrayList<>();
         if (orderTypeProjs != null) {
@@ -152,18 +188,6 @@ public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService
                         .amount(amount)
                         .orderCount(count)
                         .percentage(percentage)
-                        .build());
-            }
-        }
-
-        // 5. Order Status Counts (all statuses for this date range)
-        List<OrderStatusCountProjection> statusCountProjs = orderRepository.getOrderStatusCounts(restaurantId, start, end);
-        List<OrderStatusCountDTO> statusCountList = new ArrayList<>();
-        if (statusCountProjs != null) {
-            for (OrderStatusCountProjection proj : statusCountProjs) {
-                statusCountList.add(OrderStatusCountDTO.builder()
-                        .status(proj.getStatus())
-                        .orderCount(proj.getOrderCount() != null ? proj.getOrderCount() : 0L)
                         .build());
             }
         }
