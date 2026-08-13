@@ -57,7 +57,8 @@ public class MenuServiceImpl implements IMenuService {
         existingMenuDAO.setCategory(menuDetails.getCategory());
         existingMenuDAO.setIsAvailable(menuDetails.getIsAvailable());
         existingMenuDAO.setUpdatedDate(new Date());
-
+        existingMenuDAO.setIsVeg(menuDetails.getIsVeg());
+        existingMenuDAO.setImageUrl(menuDetails.getImageUrl());
         return mapper.menuDAOToMenu(menuRepository.save(existingMenuDAO));
     }
 
