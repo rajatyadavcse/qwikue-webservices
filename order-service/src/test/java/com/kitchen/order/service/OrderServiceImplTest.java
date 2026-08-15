@@ -450,6 +450,68 @@ public class OrderServiceImplTest {
     }
 
     @Test
+    public void testUpdateOrderStatusWithSubPaymentModeSuccess() {
+        // Arrange
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(123L);
+        order.setRestaurantId(1L);
+        order.setPaymentMode(PaymentMode.CASH);
+        order.setStatus(OrderStatus.READY);
+        order.setPaymentStatus(PaymentStatus.PENDING);
+
+        when(orderRepository.findById(123L)).thenReturn(java.util.Optional.of(order));
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            OrderResponse r = new OrderResponse();
+            r.setOrderId(dao.getOrderId());
+            r.setPaymentMode(dao.getPaymentMode());
+            r.setStatus(dao.getStatus());
+            r.setPaymentStatus(dao.getPaymentStatus());
+            r.setSubPaymentMode(dao.getSubPaymentMode());
+            return r;
+        });
+
+        com.kitchen.order.dto.request.UpdateOrderStatusRequest request = new com.kitchen.order.dto.request.UpdateOrderStatusRequest();
+        request.setStatus(OrderStatus.COMPLETED);
+        request.setSubPaymentMode(SubPaymentMode.UPI);
+
+        // Act
+        OrderResponse response = orderService.updateOrderStatus(123L, request);
+
+        // Assert
+        assertEquals(OrderStatus.COMPLETED, response.getStatus());
+        assertEquals(SubPaymentMode.UPI, response.getSubPaymentMode());
+        assertEquals(SubPaymentMode.UPI, order.getSubPaymentMode());
+        verify(eventPublisher, times(1)).publishEvent(any());
+    }
+
+    @Test
+    public void testUpdateOrderStatusWithSubPaymentModeFailureForOnlineOrder() {
+        // Arrange
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(123L);
+        order.setRestaurantId(1L);
+        order.setPaymentMode(PaymentMode.ONLINE);
+        order.setStatus(OrderStatus.READY);
+        order.setPaymentStatus(PaymentStatus.PENDING);
+
+        when(orderRepository.findById(123L)).thenReturn(java.util.Optional.of(order));
+
+        com.kitchen.order.dto.request.UpdateOrderStatusRequest request = new com.kitchen.order.dto.request.UpdateOrderStatusRequest();
+        request.setStatus(OrderStatus.COMPLETED);
+        request.setSubPaymentMode(SubPaymentMode.UPI);
+
+        // Act & Assert
+        IllegalArgumentException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> orderService.updateOrderStatus(123L, request)
+        );
+        assertEquals("subPaymentMode is only allowed when paymentMode is CASH", exception.getMessage());
+    }
+
+    @Test
     public void testCreateOrderWithExistingCustomerNameUpdate() {
         // Arrange
         CreateOrderRequest request = new CreateOrderRequest();
@@ -1567,23 +1629,10 @@ public class OrderServiceImplTest {
     }
 
     @Test
-    public void testApplyOrderDiscountOnCompletedOrderFails() {
+    public void testApplyOrderDiscountOnCancelledOrderFails() {
         OrderDAO order = new OrderDAO();
         order.setOrderId(10L);
-        order.setStatus(OrderStatus.COMPLETED);
-        order.setPaymentStatus(PaymentStatus.COMPLETED);
-        when(orderRepository.findById(10L)).thenReturn(Optional.of(order));
-
-        OrderDiscountRequest discountReq = new OrderDiscountRequest(DiscountType.PERCENTAGE, new BigDecimal("10.0"),
-                "Promo");
-        assertThrows(IllegalArgumentException.class, () -> orderService.applyOrderDiscount(10L, discountReq));
-    }
-
-    @Test
-    public void testApplyOrderDiscountOnPaidOrderFails() {
-        OrderDAO order = new OrderDAO();
-        order.setOrderId(10L);
-        order.setStatus(OrderStatus.PREPARING);
+        order.setStatus(OrderStatus.CANCELLED);
         order.setPaymentStatus(PaymentStatus.COMPLETED);
         when(orderRepository.findById(10L)).thenReturn(Optional.of(order));
 
@@ -1740,16 +1789,9 @@ public class OrderServiceImplTest {
     }
 
     @Test
-    public void testUpdateOrderOnCompletedOrCancelledOrderFails() {
-        OrderDAO completedOrder = new OrderDAO();
-        completedOrder.setOrderId(203L);
-        completedOrder.setStatus(OrderStatus.COMPLETED);
-        when(orderRepository.findById(203L)).thenReturn(Optional.of(completedOrder));
-
+    public void testUpdateOrderOnCancelledOrderFails() {
         UpdateOrderRequest updateReq = new UpdateOrderRequest();
         updateReq.setNotes("Should fail");
-
-        assertThrows(IllegalArgumentException.class, () -> orderService.updateOrder(203L, updateReq));
 
         OrderDAO cancelledOrder = new OrderDAO();
         cancelledOrder.setOrderId(204L);
@@ -1760,7 +1802,7 @@ public class OrderServiceImplTest {
     }
 
     @Test
-    public void testUpdateOrderItemsOnCompletedPaymentFails() {
+    public void testUpdateOrderItemsOnCompletedPaymentSuccess() {
         OrderDAO paidOrder = new OrderDAO();
         paidOrder.setOrderId(205L);
         paidOrder.setRestaurantId(1L);
@@ -1769,13 +1811,22 @@ public class OrderServiceImplTest {
         when(orderRepository.findById(205L)).thenReturn(Optional.of(paidOrder));
         when(validationService.validateRestaurant(1L)).thenReturn(new RestaurantValidationService.RestaurantResponse());
 
+        RestaurantValidationService.MenuResponse menuResponse = new RestaurantValidationService.MenuResponse();
+        menuResponse.setMenuId(101L);
+        menuResponse.setPrice(new BigDecimal("100.00"));
+        menuResponse.setItemName("Paneer");
+        when(validationService.validateMenuAndGetPrice(101L)).thenReturn(menuResponse);
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenReturn(new OrderResponse());
+
         UpdateOrderRequest updateReq = new UpdateOrderRequest();
         OrderItemRequest item = new OrderItemRequest();
         item.setMenuId(101L);
         item.setQuantity(2);
         updateReq.setItems(List.of(item));
 
-        assertThrows(IllegalArgumentException.class, () -> orderService.updateOrder(205L, updateReq));
+        OrderResponse response = orderService.updateOrder(205L, updateReq);
+        assertNotNull(response);
     }
 
     @Test

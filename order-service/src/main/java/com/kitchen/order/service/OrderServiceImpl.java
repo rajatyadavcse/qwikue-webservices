@@ -342,6 +342,13 @@ public class OrderServiceImpl implements IOrderService {
             throw new IllegalArgumentException("Order status cannot be null or empty");
         }
 
+        if (request.getSubPaymentMode() != null) {
+            if (order.getPaymentMode() != PaymentMode.CASH) {
+                throw new IllegalArgumentException("subPaymentMode is only allowed when paymentMode is CASH");
+            }
+            order.setSubPaymentMode(request.getSubPaymentMode());
+        }
+
         if (currentStatus == newStatus) {
             if (newStatus == OrderStatus.PREPARING && request.getPrepMinutes() != null) {
                 // This is a delay request
@@ -535,13 +542,8 @@ public class OrderServiceImpl implements IOrderService {
 
         OrderDAO order = findOrderById(orderId);
 
-        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
+        if (order.getStatus() == OrderStatus.CANCELLED) {
             throw new IllegalArgumentException("Cannot modify discount for an order with status: " + order.getStatus());
-        }
-
-        if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
-            throw new IllegalArgumentException(
-                    "Cannot modify discount for an order whose payment is already COMPLETED");
         }
 
         RestaurantValidationService.RestaurantResponse restaurant = validationService
@@ -583,13 +585,8 @@ public class OrderServiceImpl implements IOrderService {
 
         OrderDAO order = findOrderById(orderId);
 
-        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
+        if (order.getStatus() == OrderStatus.CANCELLED) {
             throw new IllegalArgumentException("Cannot modify discount for an order with status: " + order.getStatus());
-        }
-
-        if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
-            throw new IllegalArgumentException(
-                    "Cannot modify discount for an order whose payment is already COMPLETED");
         }
 
         RestaurantValidationService.RestaurantResponse restaurant = validationService
@@ -632,7 +629,7 @@ public class OrderServiceImpl implements IOrderService {
 
         OrderDAO order = findOrderById(orderId);
 
-        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
+        if (order.getStatus() == OrderStatus.CANCELLED) {
             throw new IllegalArgumentException("Cannot update order with status: " + order.getStatus());
         }
 
@@ -704,10 +701,7 @@ public class OrderServiceImpl implements IOrderService {
 
         // 5. Update paymentMode if provided
         if (request.getPaymentMode() != null && request.getPaymentMode() != order.getPaymentMode()) {
-            if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
-                throw new IllegalArgumentException(
-                        "Cannot change payment mode for an order whose payment is already COMPLETED");
-            }
+
             PaymentMode newPaymentMode = request.getPaymentMode();
             if (restaurant.getPaymentModes() != null && !restaurant.getPaymentModes().isEmpty()
                     && !restaurant.getPaymentModes().contains(newPaymentMode)) {
@@ -742,10 +736,6 @@ public class OrderServiceImpl implements IOrderService {
         // 6. Update items / recalculate pricing
         boolean pricingChanged = false;
         if (request.getItems() != null) {
-            if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
-                throw new IllegalArgumentException(
-                        "Cannot modify items for an order whose payment is already COMPLETED");
-            }
             if (request.getItems().isEmpty()) {
                 throw new IllegalArgumentException("Order must contain at least one item");
             }
@@ -778,10 +768,6 @@ public class OrderServiceImpl implements IOrderService {
             calculateOrderPricing(order, restaurant.getTaxesAndCharges(), discountReq);
             pricingChanged = true;
         } else if (request.getDiscount() != null) {
-            if (order.getPaymentStatus() == PaymentStatus.COMPLETED) {
-                throw new IllegalArgumentException(
-                        "Cannot modify discount for an order whose payment is already COMPLETED");
-            }
             calculateOrderPricing(order, restaurant.getTaxesAndCharges(), request.getDiscount());
             pricingChanged = true;
         }

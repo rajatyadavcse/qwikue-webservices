@@ -84,8 +84,8 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
            "FROM OrderDAO o " +
            "WHERE o.restaurantId = :restaurantId " +
            "AND o.status IN :statuses " +
-           "AND (cast(:start as java.time.LocalDateTime) IS NULL OR o.createdAt >= :start) " +
-           "AND (cast(:end as java.time.LocalDateTime) IS NULL OR o.createdAt < :end)")
+           "AND o.createdAt >= :start " +
+           "AND o.createdAt < :end")
     RevenueSummaryProjection getRevenueSummary(
             @Param("restaurantId") Long restaurantId,
             @Param("statuses") List<OrderStatus> statuses,
@@ -100,8 +100,8 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
            "FROM OrderDAO o " +
            "WHERE o.restaurantId = :restaurantId " +
            "AND o.status IN :statuses " +
-           "AND (cast(:start as java.time.LocalDateTime) IS NULL OR o.createdAt >= :start) " +
-           "AND (cast(:end as java.time.LocalDateTime) IS NULL OR o.createdAt < :end) " +
+           "AND o.createdAt >= :start " +
+           "AND o.createdAt < :end " +
            "GROUP BY o.paymentMode")
     List<PaymentModeRevenueProjection> getRevenueByPaymentMode(
             @Param("restaurantId") Long restaurantId,
@@ -117,8 +117,8 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
            "FROM OrderDAO o " +
            "WHERE o.restaurantId = :restaurantId " +
            "AND o.status IN :statuses " +
-           "AND (cast(:start as java.time.LocalDateTime) IS NULL OR o.createdAt >= :start) " +
-           "AND (cast(:end as java.time.LocalDateTime) IS NULL OR o.createdAt < :end) " +
+           "AND o.createdAt >= :start " +
+           "AND o.createdAt < :end " +
            "GROUP BY o.subPaymentMode")
     List<SubPaymentModeRevenueProjection> getRevenueBySubPaymentMode(
             @Param("restaurantId") Long restaurantId,
@@ -134,8 +134,8 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
            "FROM OrderDAO o " +
            "WHERE o.restaurantId = :restaurantId " +
            "AND o.status IN :statuses " +
-           "AND (cast(:start as java.time.LocalDateTime) IS NULL OR o.createdAt >= :start) " +
-           "AND (cast(:end as java.time.LocalDateTime) IS NULL OR o.createdAt < :end) " +
+           "AND o.createdAt >= :start " +
+           "AND o.createdAt < :end " +
            "GROUP BY o.orderType")
     List<OrderTypeRevenueProjection> getRevenueByOrderType(
             @Param("restaurantId") Long restaurantId,
@@ -149,8 +149,8 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
            "COUNT(o.orderId) AS orderCount " +
            "FROM OrderDAO o " +
            "WHERE o.restaurantId = :restaurantId " +
-           "AND (cast(:start as java.time.LocalDateTime) IS NULL OR o.createdAt >= :start) " +
-           "AND (cast(:end as java.time.LocalDateTime) IS NULL OR o.createdAt < :end) " +
+           "AND o.createdAt >= :start " +
+           "AND o.createdAt < :end " +
            "GROUP BY o.status")
     List<OrderStatusCountProjection> getOrderStatusCounts(
             @Param("restaurantId") Long restaurantId,

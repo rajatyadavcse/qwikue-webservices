@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -65,8 +66,32 @@ public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService
                 ? statuses
                 : DEFAULT_REVENUE_STATUSES;
 
+        // Execute the 5 database queries concurrently in parallel
+        CompletableFuture<RevenueSummaryProjection> summaryFuture =
+                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueSummary(restaurantId, targetStatuses, start, end));
+
+        CompletableFuture<List<OrderStatusCountProjection>> statusCountsFuture =
+                CompletableFuture.supplyAsync(() -> orderRepository.getOrderStatusCounts(restaurantId, start, end));
+
+        CompletableFuture<List<PaymentModeRevenueProjection>> paymentModeFuture =
+                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueByPaymentMode(restaurantId, targetStatuses, start, end));
+
+        CompletableFuture<List<SubPaymentModeRevenueProjection>> subPaymentModeFuture =
+                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueBySubPaymentMode(restaurantId, targetStatuses, start, end));
+
+        CompletableFuture<List<OrderTypeRevenueProjection>> orderTypeFuture =
+                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueByOrderType(restaurantId, targetStatuses, start, end));
+
+        CompletableFuture.allOf(
+                summaryFuture,
+                statusCountsFuture,
+                paymentModeFuture,
+                subPaymentModeFuture,
+                orderTypeFuture
+        ).join();
+
         // 1. Overall Summary
-        RevenueSummaryProjection summaryProj = orderRepository.getRevenueSummary(restaurantId, targetStatuses, start, end);
+        RevenueSummaryProjection summaryProj = summaryFuture.join();
         BigDecimal totalRevenue = (summaryProj != null && summaryProj.getTotalRevenue() != null)
                 ? summaryProj.getTotalRevenue().setScale(2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
@@ -95,7 +120,7 @@ public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService
                 : 0.0;
 
         // 2. Order Status Counts (all statuses for this date range)
-        List<OrderStatusCountProjection> statusCountProjs = orderRepository.getOrderStatusCounts(restaurantId, start, end);
+        List<OrderStatusCountProjection> statusCountProjs = statusCountsFuture.join();
         List<OrderStatusCountDTO> statusCountList = new ArrayList<>();
         
         Long cancelledOrdersCount = 0L;
@@ -137,7 +162,7 @@ public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService
                 .build();
 
         // 3. Payment Mode Breakdown
-        List<PaymentModeRevenueProjection> paymentModeProjs = orderRepository.getRevenueByPaymentMode(restaurantId, targetStatuses, start, end);
+        List<PaymentModeRevenueProjection> paymentModeProjs = paymentModeFuture.join();
         List<PaymentModeBreakdownDTO> paymentModeList = new ArrayList<>();
         if (paymentModeProjs != null) {
             for (PaymentModeRevenueProjection proj : paymentModeProjs) {
@@ -154,7 +179,7 @@ public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService
         }
 
         // 4. SubPaymentMode Breakdown
-        List<SubPaymentModeRevenueProjection> subPaymentModeProjs = orderRepository.getRevenueBySubPaymentMode(restaurantId, targetStatuses, start, end);
+        List<SubPaymentModeRevenueProjection> subPaymentModeProjs = subPaymentModeFuture.join();
         List<SubPaymentModeBreakdownDTO> subPaymentModeList = new ArrayList<>();
         if (subPaymentModeProjs != null) {
             for (SubPaymentModeRevenueProjection proj : subPaymentModeProjs) {
@@ -176,7 +201,7 @@ public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService
                 .build();
 
         // 5. Order Type Breakdown (DINE_IN vs TAKE_AWAY)
-        List<OrderTypeRevenueProjection> orderTypeProjs = orderRepository.getRevenueByOrderType(restaurantId, targetStatuses, start, end);
+        List<OrderTypeRevenueProjection> orderTypeProjs = orderTypeFuture.join();
         List<OrderTypeBreakdownDTO> orderTypeList = new ArrayList<>();
         if (orderTypeProjs != null) {
             for (OrderTypeRevenueProjection proj : orderTypeProjs) {
