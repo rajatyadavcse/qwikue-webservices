@@ -150,12 +150,12 @@ public class OrderController {
 
     @Operation(
             summary = "Update order status",
-            description = "Transitions the order to a new status. The transition is allowed from any status to any different status. " +
-                          "Reason is optional for all cases."
+            description = "Transitions the order to a new status or updates order status fields (reason, prepMinutes, subPaymentMode). " +
+                          "If status is unchanged, field updates are still allowed."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Status updated successfully"),
-            @ApiResponse(responseCode = "400", description = "Null status or identical status transition"),
+            @ApiResponse(responseCode = "200", description = "Status or order fields updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Null status or identical status transition without field updates"),
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @PutMapping(value = "/{id}/status",

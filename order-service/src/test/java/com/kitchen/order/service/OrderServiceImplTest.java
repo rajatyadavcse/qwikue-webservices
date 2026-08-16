@@ -512,6 +512,101 @@ public class OrderServiceImplTest {
     }
 
     @Test
+    public void testUpdateOrderStatus_sameStatusCompleted_updatesSubPaymentModeSuccess() {
+        // Arrange
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(123L);
+        order.setRestaurantId(1L);
+        order.setPaymentMode(PaymentMode.CASH);
+        order.setStatus(OrderStatus.COMPLETED);
+        order.setPaymentStatus(PaymentStatus.COMPLETED);
+
+        when(orderRepository.findById(123L)).thenReturn(java.util.Optional.of(order));
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            OrderResponse r = new OrderResponse();
+            r.setOrderId(dao.getOrderId());
+            r.setPaymentMode(dao.getPaymentMode());
+            r.setStatus(dao.getStatus());
+            r.setPaymentStatus(dao.getPaymentStatus());
+            r.setSubPaymentMode(dao.getSubPaymentMode());
+            return r;
+        });
+
+        com.kitchen.order.dto.request.UpdateOrderStatusRequest request = new com.kitchen.order.dto.request.UpdateOrderStatusRequest();
+        request.setStatus(OrderStatus.COMPLETED);
+        request.setSubPaymentMode(SubPaymentMode.UPI);
+
+        // Act
+        OrderResponse response = orderService.updateOrderStatus(123L, request);
+
+        // Assert
+        assertEquals(OrderStatus.COMPLETED, response.getStatus());
+        assertEquals(SubPaymentMode.UPI, response.getSubPaymentMode());
+        assertEquals(SubPaymentMode.UPI, order.getSubPaymentMode());
+        verify(orderRepository, times(1)).save(order);
+        verify(eventPublisher, times(1)).publishEvent(any());
+    }
+
+    @Test
+    public void testUpdateOrderStatus_sameStatusCompleted_updatesReasonSuccess() {
+        // Arrange
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(123L);
+        order.setRestaurantId(1L);
+        order.setStatus(OrderStatus.COMPLETED);
+
+        when(orderRepository.findById(123L)).thenReturn(java.util.Optional.of(order));
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            OrderResponse r = new OrderResponse();
+            r.setOrderId(dao.getOrderId());
+            r.setStatus(dao.getStatus());
+            r.setReason(dao.getReason());
+            return r;
+        });
+
+        com.kitchen.order.dto.request.UpdateOrderStatusRequest request = new com.kitchen.order.dto.request.UpdateOrderStatusRequest();
+        request.setStatus(OrderStatus.COMPLETED);
+        request.setReason("Customer payment adjustment");
+
+        // Act
+        OrderResponse response = orderService.updateOrderStatus(123L, request);
+
+        // Assert
+        assertEquals(OrderStatus.COMPLETED, response.getStatus());
+        assertEquals("Customer payment adjustment", response.getReason());
+        assertEquals("Customer payment adjustment", order.getReason());
+        verify(orderRepository, times(1)).save(order);
+        verify(eventPublisher, times(1)).publishEvent(any());
+    }
+
+    @Test
+    public void testUpdateOrderStatus_sameStatusNoFields_throwsException() {
+        // Arrange
+        OrderDAO order = new OrderDAO();
+        order.setOrderId(123L);
+        order.setRestaurantId(1L);
+        order.setStatus(OrderStatus.COMPLETED);
+
+        when(orderRepository.findById(123L)).thenReturn(java.util.Optional.of(order));
+
+        com.kitchen.order.dto.request.UpdateOrderStatusRequest request = new com.kitchen.order.dto.request.UpdateOrderStatusRequest();
+        request.setStatus(OrderStatus.COMPLETED);
+
+        // Act & Assert
+        IllegalArgumentException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> orderService.updateOrderStatus(123L, request)
+        );
+        assertEquals("Current status and new status are the same", exception.getMessage());
+    }
+
+    @Test
     public void testCreateOrderWithExistingCustomerNameUpdate() {
         // Arrange
         CreateOrderRequest request = new CreateOrderRequest();

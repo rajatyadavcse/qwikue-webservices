@@ -350,23 +350,31 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         if (currentStatus == newStatus) {
-            if (newStatus == OrderStatus.PREPARING && request.getPrepMinutes() != null) {
-                // This is a delay request
-                log.info("Delaying order {} by {} minutes. Reason: {}", orderId, request.getPrepMinutes(),
-                        request.getReason());
+            boolean hasFieldUpdate = request.getReason() != null
+                    || request.getPrepMinutes() != null
+                    || request.getSubPaymentMode() != null;
 
-                int delayMin = request.getPrepMinutes();
-                order.setPrepMinutes((order.getPrepMinutes() != null ? order.getPrepMinutes() : 0) + delayMin);
+            if (hasFieldUpdate) {
+                if (newStatus == OrderStatus.PREPARING && request.getPrepMinutes() != null) {
+                    // This is a delay request
+                    log.info("Delaying order {} by {} minutes. Reason: {}", orderId, request.getPrepMinutes(),
+                            request.getReason());
 
-                LocalDateTime baseTime = order.getReadyAt() != null ? order.getReadyAt() : LocalDateTime.now();
-                order.setReadyAt(baseTime.plusMinutes(delayMin));
+                    int delayMin = request.getPrepMinutes();
+                    order.setPrepMinutes((order.getPrepMinutes() != null ? order.getPrepMinutes() : 0) + delayMin);
+
+                    LocalDateTime baseTime = order.getReadyAt() != null ? order.getReadyAt() : LocalDateTime.now();
+                    order.setReadyAt(baseTime.plusMinutes(delayMin));
+                } else if (request.getPrepMinutes() != null) {
+                    order.setPrepMinutes(request.getPrepMinutes());
+                }
 
                 if (request.getReason() != null) {
                     order.setReason(request.getReason());
                 }
 
                 OrderDAO saved = orderRepository.save(order);
-                log.info("Order {} delayed successfully. New readyAt: {}", orderId, order.getReadyAt());
+                log.info("Order {} updated fields while remaining in status {}", orderId, currentStatus);
                 OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
                 eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
                 return response;
