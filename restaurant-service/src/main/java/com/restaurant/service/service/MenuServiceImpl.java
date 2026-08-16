@@ -47,6 +47,16 @@ public class MenuServiceImpl implements IMenuService {
     }
 
     @Override
+    public List<Menu> getMenusByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return menuRepository.findByMenuIdIn(ids).stream()
+                .map(mapper::menuDAOToMenu)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public Menu updateMenu(Long id, Menu menuDetails) {
         MenuDAO existingMenuDAO = menuRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Menu not found with id: " + id));

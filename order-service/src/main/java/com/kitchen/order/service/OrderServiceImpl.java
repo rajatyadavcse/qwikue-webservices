@@ -43,6 +43,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -169,13 +171,23 @@ public class OrderServiceImpl implements IOrderService {
             order.setStatus(OrderStatus.PAYMENT_PENDING);
         }
 
-        // 4. Build order items — validate each menu item and snapshot price
+        // 4. Build order items — batch validate menu items and snapshot prices
         BigDecimal subTotal = BigDecimal.ZERO;
 
+        List<Long> menuIds = request.getItems().stream()
+                .map(OrderItemRequest::getMenuId)
+                .collect(Collectors.toList());
+
+        Map<Long, RestaurantValidationService.MenuResponse> menuMap = validationService
+                .validateMenusAndGetPrices(menuIds);
+
         for (OrderItemRequest itemRequest : request.getItems()) {
-            // Validate menu item and get current price from restaurant-service
-            RestaurantValidationService.MenuResponse menu = validationService
-                    .validateMenuAndGetPrice(itemRequest.getMenuId());
+            RestaurantValidationService.MenuResponse menu = (menuMap != null && menuMap.containsKey(itemRequest.getMenuId()))
+                    ? menuMap.get(itemRequest.getMenuId())
+                    : validationService.validateMenuAndGetPrice(itemRequest.getMenuId());
+            if (menu == null) {
+                throw new ResourceNotFoundException("Menu item not found with id: " + itemRequest.getMenuId());
+            }
 
             OrderItemDAO item = new OrderItemDAO();
             item.setMenuId(itemRequest.getMenuId());

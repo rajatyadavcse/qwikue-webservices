@@ -45,4 +45,8 @@ public class MenuController {
         return new ResponseEntity<>(menuService.getMenuById(id), HttpStatus.OK);
     }
 
+    @PostMapping(value = "/batch", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<Menu>> getMenusByIds(@RequestBody List<Long> ids) {
+        return new ResponseEntity<>(menuService.getMenusByIds(ids), HttpStatus.OK);
+    }
 }

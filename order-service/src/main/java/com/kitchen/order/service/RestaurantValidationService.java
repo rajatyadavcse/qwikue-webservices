@@ -16,7 +16,9 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.restaurant.service.service.IRestaurantService;
 import com.restaurant.service.service.IMenuService;
@@ -246,6 +248,49 @@ public class RestaurantValidationService implements IRestaurantValidationService
             throw e;
         } catch (Exception e) {
             log.error("Direct call to menuService failed for menuId={}: {}", menuId, e.getMessage());
+            throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.", e);
+        }
+    }
+
+    /**
+     * Batch validates multiple menu items and fetches their current prices in a single call.
+     */
+    public Map<Long, MenuResponse> validateMenusAndGetPrices(List<Long> menuIds) {
+        if (menuIds == null || menuIds.isEmpty()) {
+            return Map.of();
+        }
+        log.debug("Batch validating menuIds={}", menuIds);
+        try {
+            List<com.restaurant.service.model.Menu> menuEntities = menuService.getMenusByIds(menuIds);
+            Map<Long, MenuResponse> result = new HashMap<>();
+
+            for (com.restaurant.service.model.Menu menuEntity : menuEntities) {
+                if (Boolean.FALSE.equals(menuEntity.getIsAvailable())) {
+                    throw new IllegalArgumentException(
+                            "Menu item '" + menuEntity.getItemName() + "' (id: " + menuEntity.getMenuId() + ") is currently unavailable");
+                }
+                MenuResponse response = new MenuResponse();
+                response.setMenuId(menuEntity.getMenuId());
+                response.setRestaurantId(menuEntity.getRestaurantId());
+                response.setItemName(menuEntity.getItemName());
+                response.setPrice(menuEntity.getPrice());
+                response.setIsAvailable(menuEntity.getIsAvailable());
+                result.put(menuEntity.getMenuId(), response);
+            }
+
+            for (Long menuId : menuIds) {
+                if (!result.containsKey(menuId)) {
+                    throw new ResourceNotFoundException("Menu item not found with id: " + menuId);
+                }
+            }
+
+            return result;
+        } catch (com.restaurant.service.exception.ResourceNotFoundException e) {
+            throw new ResourceNotFoundException(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Direct call to menuService failed for menuIds={}: {}", menuIds, e.getMessage());
             throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.", e);
         }
     }

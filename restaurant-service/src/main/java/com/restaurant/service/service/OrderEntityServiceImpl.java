@@ -60,7 +60,8 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
                 com.restaurant.service.model.OrderEntityStatus.valueOf(orderEntity.getStatus().trim().toUpperCase());
                 orderEntity.setStatus(orderEntity.getStatus().trim().toUpperCase());
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Invalid status: " + orderEntity.getStatus() + ". Allowed values: AVAILABLE, OCCUPIED, BILL_PENDING");
+                throw new IllegalArgumentException("Invalid status: " + orderEntity.getStatus()
+                        + ". Allowed values: AVAILABLE, OCCUPIED, BILL_PENDING");
             }
         }
 
@@ -86,7 +87,8 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
                 com.restaurant.service.model.OrderEntityStatus.valueOf(orderEntity.getStatus().trim().toUpperCase());
                 orderEntity.setStatus(orderEntity.getStatus().trim().toUpperCase());
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Invalid status: " + orderEntity.getStatus() + ". Allowed values: AVAILABLE, OCCUPIED, BILL_PENDING");
+                throw new IllegalArgumentException("Invalid status: " + orderEntity.getStatus()
+                        + ". Allowed values: AVAILABLE, OCCUPIED, BILL_PENDING");
             }
         }
 
@@ -97,7 +99,8 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
     }
 
     @Override
-    public OrderEntity updateOrderEntityStatus(String entityNo, Long restaurantId, com.restaurant.service.model.OrderEntityStatus status) {
+    public OrderEntity updateOrderEntityStatus(String entityNo, Long restaurantId,
+            com.restaurant.service.model.OrderEntityStatus status) {
         if (entityNo == null || restaurantId == null || status == null) {
             throw new IllegalArgumentException("Entity No, Restaurant ID, and Status are required");
         }
@@ -152,7 +155,8 @@ public class OrderEntityServiceImpl implements IOrderEntityService {
         });
 
         if (canBeSortedAsLong) {
-            orderEntities.sort(java.util.Comparator.comparingLong(entity -> Long.parseLong(entity.getEntityNo().trim())));
+            orderEntities
+                    .sort(java.util.Comparator.comparingLong(entity -> Long.parseLong(entity.getEntityNo().trim())));
         }
 
         return orderEntities;
