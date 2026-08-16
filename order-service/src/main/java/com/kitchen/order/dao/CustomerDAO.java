@@ -2,11 +2,13 @@ package com.kitchen.order.dao;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.BatchSize;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "customers", schema = "\"order\"")
 @Data
+@BatchSize(size = 25)
 public class CustomerDAO {
 
     @Id

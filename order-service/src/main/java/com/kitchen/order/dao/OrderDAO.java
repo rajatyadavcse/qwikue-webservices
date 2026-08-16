@@ -9,6 +9,7 @@ import com.kitchen.order.enums.DiscountType;
 import com.kitchen.order.dto.response.OrderAppliedCharge;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -145,6 +146,7 @@ public class OrderDAO {
     private CustomerDAO customer;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @BatchSize(size = 25)
     private List<OrderItemDAO> items = new ArrayList<>();
 
     @PrePersist

@@ -778,7 +778,7 @@ public class OrderServiceImplTest {
         LocalDateTime start = from.atStartOfDay();
         LocalDateTime end = to.plusDays(1).atStartOfDay();
 
-        when(orderRepository.findByRestaurantIdAndStatusAndDateRange(restaurantId, status, start, end, pageable))
+        when(orderRepository.findByRestaurantIdAndStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(restaurantId, status, start, end, pageable))
                 .thenReturn(page);
         when(orderMapper.orderDAOListToResponseList(any())).thenReturn(List.of(new OrderResponse()));
 
@@ -786,7 +786,7 @@ public class OrderServiceImplTest {
         var response = orderService.getOrdersByRestaurant(restaurantId, status, from, to, pageable);
 
         // Assert
-        verify(orderRepository, times(1)).findByRestaurantIdAndStatusAndDateRange(restaurantId, status, start, end,
+        verify(orderRepository, times(1)).findByRestaurantIdAndStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(restaurantId, status, start, end,
                 pageable);
         assertEquals(1, response.getContent().size());
     }
@@ -805,7 +805,7 @@ public class OrderServiceImplTest {
         LocalDateTime start = from.atStartOfDay();
         LocalDateTime end = to.plusDays(1).atStartOfDay();
 
-        when(orderRepository.findByRestaurantIdAndStatusNotAndDateRange(restaurantId, OrderStatus.PAYMENT_PENDING,
+        when(orderRepository.findByRestaurantIdAndStatusNotAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(restaurantId, OrderStatus.PAYMENT_PENDING,
                 start, end, pageable)).thenReturn(page);
         when(orderMapper.orderDAOListToResponseList(any())).thenReturn(List.of(new OrderResponse()));
 
@@ -813,7 +813,7 @@ public class OrderServiceImplTest {
         var response = orderService.getOrdersByRestaurant(restaurantId, null, from, to, pageable);
 
         // Assert
-        verify(orderRepository, times(1)).findByRestaurantIdAndStatusNotAndDateRange(restaurantId,
+        verify(orderRepository, times(1)).findByRestaurantIdAndStatusNotAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(restaurantId,
                 OrderStatus.PAYMENT_PENDING, start, end, pageable);
         assertEquals(1, response.getContent().size());
     }

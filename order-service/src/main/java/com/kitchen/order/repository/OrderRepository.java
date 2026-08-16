@@ -64,6 +64,25 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
             @Param("end") LocalDateTime end,
             Pageable pageable);
 
+    /** Optimized queries without dynamic null checks for precise index usage */
+    Page<OrderDAO> findByRestaurantIdAndStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+            Long restaurantId, OrderStatus status, LocalDateTime start, LocalDateTime end, Pageable pageable);
+
+    Page<OrderDAO> findByRestaurantIdAndStatusNotAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+            Long restaurantId, OrderStatus excludeStatus, LocalDateTime start, LocalDateTime end, Pageable pageable);
+
+    Page<OrderDAO> findByRestaurantIdAndStatusAndCreatedAtGreaterThanEqual(
+            Long restaurantId, OrderStatus status, LocalDateTime start, Pageable pageable);
+
+    Page<OrderDAO> findByRestaurantIdAndStatusNotAndCreatedAtGreaterThanEqual(
+            Long restaurantId, OrderStatus excludeStatus, LocalDateTime start, Pageable pageable);
+
+    Page<OrderDAO> findByRestaurantIdAndStatusAndCreatedAtLessThan(
+            Long restaurantId, OrderStatus status, LocalDateTime end, Pageable pageable);
+
+    Page<OrderDAO> findByRestaurantIdAndStatusNotAndCreatedAtLessThan(
+            Long restaurantId, OrderStatus excludeStatus, LocalDateTime end, Pageable pageable);
+
     /** Check if other active orders exist for a given table/entity in a restaurant. */
     boolean existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(
             Long restaurantId, String entityNo, List<OrderStatus> statuses, Long orderId);

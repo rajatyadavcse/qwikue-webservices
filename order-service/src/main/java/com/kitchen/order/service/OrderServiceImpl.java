@@ -291,12 +291,38 @@ public class OrderServiceImpl implements IOrderService {
             LocalDateTime start = (fromDate != null) ? fromDate.atStartOfDay() : null;
             LocalDateTime end = (toDate != null) ? toDate.plusDays(1).atStartOfDay() : null;
 
-            if (status != null) {
-                page = orderRepository.findByRestaurantIdAndStatusAndDateRange(restaurantId, status, start, end,
-                        pageable);
+            if (start != null && end != null) {
+                if (status != null) {
+                    page = orderRepository.findByRestaurantIdAndStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                            restaurantId, status, start, end, pageable);
+                } else {
+                    page = orderRepository.findByRestaurantIdAndStatusNotAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                            restaurantId, OrderStatus.PAYMENT_PENDING, start, end, pageable);
+                }
+            } else if (start != null) {
+                if (status != null) {
+                    page = orderRepository.findByRestaurantIdAndStatusAndCreatedAtGreaterThanEqual(
+                            restaurantId, status, start, pageable);
+                } else {
+                    page = orderRepository.findByRestaurantIdAndStatusNotAndCreatedAtGreaterThanEqual(
+                            restaurantId, OrderStatus.PAYMENT_PENDING, start, pageable);
+                }
+            } else if (end != null) {
+                if (status != null) {
+                    page = orderRepository.findByRestaurantIdAndStatusAndCreatedAtLessThan(
+                            restaurantId, status, end, pageable);
+                } else {
+                    page = orderRepository.findByRestaurantIdAndStatusNotAndCreatedAtLessThan(
+                            restaurantId, OrderStatus.PAYMENT_PENDING, end, pageable);
+                }
             } else {
-                page = orderRepository.findByRestaurantIdAndStatusNotAndDateRange(restaurantId,
-                        OrderStatus.PAYMENT_PENDING, start, end, pageable);
+                if (status != null) {
+                    page = orderRepository.findByRestaurantIdAndStatusAndDateRange(restaurantId, status, start, end,
+                            pageable);
+                } else {
+                    page = orderRepository.findByRestaurantIdAndStatusNotAndDateRange(restaurantId,
+                            OrderStatus.PAYMENT_PENDING, start, end, pageable);
+                }
             }
         }
 
