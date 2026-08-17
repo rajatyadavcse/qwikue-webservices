@@ -64,6 +64,7 @@ public class RestaurantValidationService implements IRestaurantValidationService
         private String razorpayLinkedAccountId;
         private String razorpayKeyId;
         private String razorpayKeySecret;
+        private String upiId;
     }
 
     @Data
@@ -140,6 +141,7 @@ public class RestaurantValidationService implements IRestaurantValidationService
             response.setRazorpayLinkedAccountId(restaurant.getRazorpayLinkedAccountId());
             response.setRazorpayKeyId(restaurant.getRazorpayKeyId());
             response.setRazorpayKeySecret(restaurant.getRazorpayKeySecret());
+            response.setUpiId(restaurant.getUpiId());
             return response;
         } catch (com.restaurant.service.exception.ResourceNotFoundException e) {
             throw new ResourceNotFoundException(e.getMessage());

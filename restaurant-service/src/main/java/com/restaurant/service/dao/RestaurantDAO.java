@@ -68,6 +68,7 @@ public class RestaurantDAO {
     @Convert(converter = com.restaurant.service.util.AttributeCryptoConverter.class)
     private String razorpayKeySecret;
 
-
+    @Column(name = "upi_id")
+    private String upiId;
 }
 

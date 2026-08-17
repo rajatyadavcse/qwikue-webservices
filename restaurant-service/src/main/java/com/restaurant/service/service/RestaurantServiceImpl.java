@@ -68,7 +68,8 @@ public class RestaurantServiceImpl implements IRestaurantService {
         existingRestaurantDAO.setTaxesAndCharges(restaurantDetails.getTaxesAndCharges());
         existingRestaurantDAO.setPaymentModes(restaurantDetails.getPaymentModes());
         if (restaurantDetails.getRazorpayKeyId() != null && !restaurantDetails.getRazorpayKeyId().isBlank() &&
-                restaurantDetails.getRazorpayKeySecret() != null && !restaurantDetails.getRazorpayKeySecret().isBlank()) {
+                restaurantDetails.getRazorpayKeySecret() != null
+                && !restaurantDetails.getRazorpayKeySecret().isBlank()) {
             existingRestaurantDAO.setRazorpayKeyId(restaurantDetails.getRazorpayKeyId());
             existingRestaurantDAO.setRazorpayKeySecret(restaurantDetails.getRazorpayKeySecret());
         } else {
@@ -77,6 +78,7 @@ public class RestaurantServiceImpl implements IRestaurantService {
             existingRestaurantDAO.setRazorpayKeyId(restaurantDetails.getRazorpayKeyId());
             existingRestaurantDAO.setRazorpayKeySecret(restaurantDetails.getRazorpayKeySecret());
         }
+        existingRestaurantDAO.setUpiId(restaurantDetails.getUpiId());
         existingRestaurantDAO.setUpdatedDate(new Date());
 
         return mapper.restaurantDAOToRestaurant(restaurantRepository.save(existingRestaurantDAO));

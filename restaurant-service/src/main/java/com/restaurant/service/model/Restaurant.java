@@ -54,5 +54,7 @@ public class Restaurant implements Serializable {
     private String razorpayKeyId;
 
     private String razorpayKeySecret;
+
+    private String upiId;
 }
 
