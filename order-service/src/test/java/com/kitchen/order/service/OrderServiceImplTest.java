@@ -1863,7 +1863,7 @@ public class OrderServiceImplTest {
         entityResp.setEntityNo("Table-2");
         entityResp.setOrderEntityType("TABLE");
         when(validationService.validateEntity("Table-2", 1L)).thenReturn(entityResp);
-        when(orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(eq(1L), eq("Table-1"), anyList(),
+        when(orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(eq(1L), anyString(), anyList(),
                 eq(202L))).thenReturn(false);
         when(orderRepository.save(any(OrderDAO.class))).thenAnswer(inv -> inv.getArgument(0));
         when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenReturn(new OrderResponse());
@@ -2013,5 +2013,100 @@ public class OrderServiceImplTest {
         assertEquals(PaymentMode.ONLINE, response.getPaymentMode());
         assertNull(response.getSubPaymentMode());
         assertNull(cashOrder.getSubPaymentMode());
+    }
+
+    @Test
+    public void testCreateOrder_DineIn_ThrowsExceptionWhenActiveOrderExists() {
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setRestaurantId(1L);
+        request.setOrderType(OrderType.DINE_IN);
+        request.setEntityNo("10");
+        request.setCustomerName("John Doe");
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        RestaurantValidationService.EntityResponse entity = new RestaurantValidationService.EntityResponse();
+        entity.setEntityNo("10");
+        when(validationService.validateEntity("10", 1L)).thenReturn(entity);
+
+        when(orderRepository.existsByRestaurantIdAndEntityNoAndStatusIn(eq(1L), eq("10"), anyList()))
+                .thenReturn(true);
+
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> orderService.createOrder(request)
+        );
+        assertEquals("An active order already exists for table/entity: 10", ex.getMessage());
+    }
+
+    @Test
+    public void testCreateOrder_TakeAway_DoesNotCheckActiveEntityOrder() {
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setRestaurantId(1L);
+        request.setOrderType(OrderType.TAKE_AWAY);
+        request.setCustomerName("John Doe");
+
+        OrderItemRequest itemRequest = new OrderItemRequest();
+        itemRequest.setMenuId(101L);
+        itemRequest.setQuantity(1);
+        request.setItems(List.of(itemRequest));
+
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setRestaurantId(1L);
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        RestaurantValidationService.MenuResponse menu = new RestaurantValidationService.MenuResponse();
+        menu.setMenuId(101L);
+        menu.setPrice(new BigDecimal("50.00"));
+        menu.setIsAvailable(true);
+        when(validationService.validateMenuAndGetPrice(101L)).thenReturn(menu);
+
+        when(customerRepository.save(any(CustomerDAO.class))).thenAnswer(i -> i.getArgument(0));
+        when(tokenCounterRepository.getNextTokenNo(eq(1L), any(LocalDate.class))).thenReturn(1);
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(i -> {
+            OrderDAO dao = i.getArgument(0);
+            dao.setOrderId(100L);
+            return dao;
+        });
+
+        OrderResponse mockResponse = new OrderResponse();
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenReturn(mockResponse);
+
+        OrderResponse response = orderService.createOrder(request);
+
+        assertNotNull(response);
+        verify(orderRepository, never()).existsByRestaurantIdAndEntityNoAndStatusIn(anyLong(), anyString(), anyList());
+    }
+
+    @Test
+    public void testUpdateOrder_DineIn_ThrowsExceptionWhenAnotherActiveOrderExists() {
+        OrderDAO existingOrder = new OrderDAO();
+        existingOrder.setOrderId(100L);
+        existingOrder.setRestaurantId(1L);
+        existingOrder.setOrderType(OrderType.DINE_IN);
+        existingOrder.setEntityNo("5");
+        existingOrder.setStatus(OrderStatus.PENDING);
+
+        when(orderRepository.findById(100L)).thenReturn(Optional.of(existingOrder));
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        RestaurantValidationService.EntityResponse entity = new RestaurantValidationService.EntityResponse();
+        entity.setEntityNo("10");
+        when(validationService.validateEntity("10", 1L)).thenReturn(entity);
+
+        when(orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(eq(1L), eq("10"), anyList(), eq(100L)))
+                .thenReturn(true);
+
+        UpdateOrderRequest updateReq = new UpdateOrderRequest();
+        updateReq.setEntityNo("10");
+
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> orderService.updateOrder(100L, updateReq)
+        );
+        assertEquals("An active order already exists for table/entity: 10", ex.getMessage());
     }
 }

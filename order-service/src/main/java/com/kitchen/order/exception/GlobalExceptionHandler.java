@@ -49,9 +49,9 @@ public class GlobalExceptionHandler {
     }
  
     // ── 400 Bad Request (manual validation in service layer) ──────────────────
-    @ExceptionHandler(IllegalArgumentException.class)
+    @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
     public ResponseEntity<?> handleIllegalArgument(
-            IllegalArgumentException ex, WebRequest request) {
+            RuntimeException ex, WebRequest request) {
         return buildResponse(ex.getMessage(), HttpStatus.BAD_REQUEST, request);
     }
  

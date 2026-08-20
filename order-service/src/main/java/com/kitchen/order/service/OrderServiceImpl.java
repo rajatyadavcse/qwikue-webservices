@@ -60,6 +60,12 @@ public class OrderServiceImpl implements IOrderService {
             OrderStatus.PREPARING,
             OrderStatus.READY);
 
+    private static final List<OrderStatus> ACTIVE_ORDER_STATUSES = List.of(
+            OrderStatus.PAYMENT_PENDING,
+            OrderStatus.PENDING,
+            OrderStatus.PREPARING,
+            OrderStatus.READY);
+
     @Autowired
     private OrderRepository orderRepository;
 
@@ -105,7 +111,12 @@ public class OrderServiceImpl implements IOrderService {
             if (request.getEntityNo() == null || request.getEntityNo().trim().isEmpty()) {
                 throw new IllegalArgumentException("entityNo is required for DINE_IN orders");
             }
-            entity = validationService.validateEntity(request.getEntityNo().trim(), request.getRestaurantId());
+            String entityNo = request.getEntityNo().trim();
+            entity = validationService.validateEntity(entityNo, request.getRestaurantId());
+
+            if (orderRepository.existsByRestaurantIdAndEntityNoAndStatusIn(request.getRestaurantId(), entityNo, ACTIVE_ORDER_STATUSES)) {
+                throw new IllegalStateException("An active order already exists for table/entity: " + entityNo);
+            }
         }
 
         // 3. Resolve/Create Customer details
@@ -716,6 +727,14 @@ public class OrderServiceImpl implements IOrderService {
         if (entityChanged) {
             if (order.getOrderType() == OrderType.DINE_IN && order.getEntityNo() != null
                     && !order.getEntityNo().trim().isEmpty()) {
+                boolean hasOtherActiveOrders = orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(
+                        order.getRestaurantId(),
+                        order.getEntityNo().trim(),
+                        ACTIVE_ORDER_STATUSES,
+                        order.getOrderId());
+                if (hasOtherActiveOrders) {
+                    throw new IllegalStateException("An active order already exists for table/entity: " + order.getEntityNo().trim());
+                }
                 validationService.updateEntityStatus(order.getEntityNo().trim(), order.getRestaurantId(),
                         OrderEntityStatus.OCCUPIED);
             }
@@ -952,7 +971,7 @@ public class OrderServiceImpl implements IOrderService {
             boolean hasOtherActiveOrders = orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(
                     restaurantId,
                     entityNo.trim(),
-                    List.of(OrderStatus.PAYMENT_PENDING, OrderStatus.PENDING, OrderStatus.PREPARING, OrderStatus.READY),
+                    ACTIVE_ORDER_STATUSES,
                     excludeOrderId);
             if (!hasOtherActiveOrders) {
                 validationService.updateEntityStatus(entityNo.trim(), restaurantId,

@@ -83,6 +83,10 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
     Page<OrderDAO> findByRestaurantIdAndStatusNotAndCreatedAtLessThan(
             Long restaurantId, OrderStatus excludeStatus, LocalDateTime end, Pageable pageable);
 
+    /** Check if active orders exist for a given table/entity in a restaurant. */
+    boolean existsByRestaurantIdAndEntityNoAndStatusIn(
+            Long restaurantId, String entityNo, List<OrderStatus> statuses);
+
     /** Check if other active orders exist for a given table/entity in a restaurant. */
     boolean existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(
             Long restaurantId, String entityNo, List<OrderStatus> statuses, Long orderId);
