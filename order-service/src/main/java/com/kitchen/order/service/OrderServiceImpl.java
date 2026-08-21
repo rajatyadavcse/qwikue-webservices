@@ -806,9 +806,20 @@ public class OrderServiceImpl implements IOrderService {
             }
 
             order.getItems().clear();
+            List<Long> menuIds = request.getItems().stream()
+                    .map(OrderItemRequest::getMenuId)
+                    .collect(Collectors.toList());
+
+            Map<Long, RestaurantValidationService.MenuResponse> menuMap = validationService
+                    .validateMenusAndGetPrices(menuIds);
+
             for (OrderItemRequest itemRequest : request.getItems()) {
-                RestaurantValidationService.MenuResponse menu = validationService
-                        .validateMenuAndGetPrice(itemRequest.getMenuId());
+                RestaurantValidationService.MenuResponse menu = (menuMap != null && menuMap.containsKey(itemRequest.getMenuId()))
+                        ? menuMap.get(itemRequest.getMenuId())
+                        : validationService.validateMenuAndGetPrice(itemRequest.getMenuId());
+                if (menu == null) {
+                    throw new ResourceNotFoundException("Menu item not found with id: " + itemRequest.getMenuId());
+                }
 
                 OrderItemDAO item = new OrderItemDAO();
                 item.setMenuId(itemRequest.getMenuId());
