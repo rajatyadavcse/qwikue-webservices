@@ -56,5 +56,7 @@ public class Restaurant implements Serializable {
     private String razorpayKeySecret;
 
     private String upiId;
+
+    private Boolean tipEnabled = false;
 }
 

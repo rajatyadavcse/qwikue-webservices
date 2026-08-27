@@ -18,4 +18,7 @@ public class PaymentBreakdownDTO {
 
     @Builder.Default
     private List<SubPaymentModeBreakdownDTO> bySubPaymentMode = new ArrayList<>();
+
+    @Builder.Default
+    private List<TipPaymentModeBreakdownDTO> byTipPaymentMode = new ArrayList<>();
 }

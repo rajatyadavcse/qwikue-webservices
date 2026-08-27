@@ -28,6 +28,9 @@ public class RestaurantServiceImpl implements IRestaurantService {
         if (restaurant.getPaymentModes() == null || restaurant.getPaymentModes().isEmpty()) {
             restaurant.setPaymentModes(List.of(com.restaurant.service.model.PaymentMode.CASH));
         }
+        if (restaurant.getTipEnabled() == null) {
+            restaurant.setTipEnabled(false);
+        }
         if (restaurant.getCreatedDate() == null) {
             restaurant.setCreatedDate(new Date());
         }
@@ -79,6 +82,7 @@ public class RestaurantServiceImpl implements IRestaurantService {
             existingRestaurantDAO.setRazorpayKeySecret(restaurantDetails.getRazorpayKeySecret());
         }
         existingRestaurantDAO.setUpiId(restaurantDetails.getUpiId());
+        existingRestaurantDAO.setTipEnabled(restaurantDetails.getTipEnabled() != null ? restaurantDetails.getTipEnabled() : false);
         existingRestaurantDAO.setUpdatedDate(new Date());
 
         return mapper.restaurantDAOToRestaurant(restaurantRepository.save(existingRestaurantDAO));

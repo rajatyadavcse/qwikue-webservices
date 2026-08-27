@@ -10,6 +10,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Data
@@ -40,6 +41,13 @@ public class CreateOrderRequest {
     private PaymentMode paymentMode = PaymentMode.CASH;
 
     private SubPaymentMode subPaymentMode;
+
+    private BigDecimal tipAmount;
+
+    private SubPaymentMode tipPaymentMode;
+
+    @Valid
+    private List<SplitPayment> splitPayments;
 
     private OrderedBy orderedBy = OrderedBy.CUSTOMER;
 

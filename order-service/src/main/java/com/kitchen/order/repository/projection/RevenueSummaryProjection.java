@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 public interface RevenueSummaryProjection {
     BigDecimal getTotalRevenue();
+    BigDecimal getTotalTip();
     BigDecimal getNetSubTotal();
     BigDecimal getTotalTax();
     BigDecimal getTotalServiceCharge();

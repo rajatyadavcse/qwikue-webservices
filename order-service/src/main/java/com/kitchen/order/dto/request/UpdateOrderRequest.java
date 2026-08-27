@@ -6,6 +6,7 @@ import com.kitchen.order.enums.SubPaymentMode;
 import jakarta.validation.Valid;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Data
@@ -48,9 +49,22 @@ public class UpdateOrderRequest {
     private PaymentMode paymentMode;
 
     /**
-     * Optional sub-payment mode (CASH, CARD, UPI) for in-restaurant CASH orders.
+     * Optional sub-payment mode (CASH, CARD, UPI, SPLIT) for in-restaurant CASH orders.
      */
     private SubPaymentMode subPaymentMode;
+
+    /**
+     * Optional tip amount added to the order total during settlement.
+     */
+    private BigDecimal tipAmount;
+
+    private SubPaymentMode tipPaymentMode;
+
+    /**
+     * Optional list of split payment modes and amounts when subPaymentMode is SPLIT.
+     */
+    @Valid
+    private List<SplitPayment> splitPayments;
 
     /**
      * Optional updated order-level discount.

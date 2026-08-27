@@ -7,6 +7,7 @@ import com.kitchen.order.enums.PaymentStatus;
 import com.kitchen.order.enums.OrderType;
 import com.kitchen.order.enums.DiscountType;
 import com.kitchen.order.dto.response.OrderAppliedCharge;
+import com.kitchen.order.dto.request.SplitPayment;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.BatchSize;
@@ -120,6 +121,17 @@ public class OrderDAO {
     @Enumerated(EnumType.STRING)
     @Column(name = "sub_payment_mode", length = 20)
     private SubPaymentMode subPaymentMode;
+
+    @Column(name = "tip_amount", precision = 10, scale = 2)
+    private BigDecimal tipAmount = BigDecimal.ZERO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tip_payment_mode", length = 20)
+    private SubPaymentMode tipPaymentMode;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "split_payments", columnDefinition = "jsonb")
+    private List<SplitPayment> splitPayments = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false, length = 20)

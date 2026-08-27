@@ -21,6 +21,7 @@ import com.kitchen.order.repository.projection.OrderTypeRevenueProjection;
 import com.kitchen.order.repository.projection.PaymentModeRevenueProjection;
 import com.kitchen.order.repository.projection.RevenueSummaryProjection;
 import com.kitchen.order.repository.projection.SubPaymentModeRevenueProjection;
+import com.kitchen.order.repository.projection.TipPaymentModeRevenueProjection;
 
 @Repository
 public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
@@ -113,6 +114,7 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
     /** Aggregate overall revenue summary for a restaurant within a date range and status list. */
     @Query("SELECT " +
            "COALESCE(SUM(o.totalAmount), 0) AS totalRevenue, " +
+           "COALESCE(SUM(o.tipAmount), 0) AS totalTip, " +
            "COALESCE(SUM(o.subTotal), 0) AS netSubTotal, " +
            "COALESCE(SUM(o.taxAmount), 0) AS totalTax, " +
            "COALESCE(SUM(o.serviceChargeAmount), 0) AS totalServiceCharge, " +
@@ -131,36 +133,71 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
             @Param("end") LocalDateTime end);
 
     /** Aggregate revenue by payment mode for a restaurant within a date range and status list. */
-    @Query("SELECT " +
-           "o.paymentMode AS paymentMode, " +
-           "COALESCE(SUM(o.totalAmount), 0) AS amount, " +
-           "COUNT(o.orderId) AS orderCount " +
-           "FROM OrderDAO o " +
-           "WHERE o.restaurantId = :restaurantId " +
-           "AND o.status IN :statuses " +
-           "AND o.createdAt >= :start " +
-           "AND o.createdAt < :end " +
-           "GROUP BY o.paymentMode")
+    @Query(value = "SELECT combined.payment_mode_cat AS paymentMode, COALESCE(SUM(combined.amount), 0) AS amount, COUNT(DISTINCT combined.order_id) AS orderCount " +
+           "FROM (" +
+           "  SELECT o.order_id, o.payment_mode AS payment_mode_cat, o.total_amount AS amount " +
+           "  FROM \"order\".orders o " +
+           "  WHERE o.restaurant_id = :restaurantId " +
+           "  AND o.status IN (:statuses) " +
+           "  AND o.created_at >= :start " +
+           "  AND o.created_at < :end " +
+           "  AND (o.sub_payment_mode IS NULL OR o.sub_payment_mode != 'SPLIT') " +
+           "  UNION ALL " +
+           "  SELECT o.order_id, CASE WHEN UPPER(elem->>'mode') = 'CASH' THEN 'CASH' ELSE 'ONLINE' END AS payment_mode_cat, CAST(elem->>'amount' AS numeric) AS amount " +
+           "  FROM \"order\".orders o, jsonb_array_elements(o.split_payments) AS elem " +
+           "  WHERE o.restaurant_id = :restaurantId " +
+           "  AND o.status IN (:statuses) " +
+           "  AND o.created_at >= :start " +
+           "  AND o.created_at < :end " +
+           "  AND o.sub_payment_mode = 'SPLIT' " +
+           ") combined " +
+           "GROUP BY combined.payment_mode_cat", nativeQuery = true)
     List<PaymentModeRevenueProjection> getRevenueByPaymentMode(
             @Param("restaurantId") Long restaurantId,
-            @Param("statuses") List<OrderStatus> statuses,
+            @Param("statuses") List<String> statuses,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
 
     /** Aggregate revenue by sub-payment mode for a restaurant within a date range and status list. */
-    @Query("SELECT " +
-           "COALESCE(cast(o.subPaymentMode as string), 'UNSPECIFIED') AS subPaymentMode, " +
-           "COALESCE(SUM(o.totalAmount), 0) AS amount, " +
-           "COUNT(o.orderId) AS orderCount " +
-           "FROM OrderDAO o " +
-           "WHERE o.restaurantId = :restaurantId " +
-           "AND o.status IN :statuses " +
-           "AND o.createdAt >= :start " +
-           "AND o.createdAt < :end " +
-           "GROUP BY o.subPaymentMode")
+    @Query(value = "SELECT combined.sub_mode AS subPaymentMode, COALESCE(SUM(combined.amount), 0) AS amount, COUNT(DISTINCT combined.order_id) AS orderCount " +
+           "FROM (" +
+           "  SELECT o.order_id, COALESCE(o.sub_payment_mode, 'UNSPECIFIED') AS sub_mode, o.total_amount AS amount " +
+           "  FROM \"order\".orders o " +
+           "  WHERE o.restaurant_id = :restaurantId " +
+           "  AND o.status IN (:statuses) " +
+           "  AND o.created_at >= :start " +
+           "  AND o.created_at < :end " +
+           "  AND (o.sub_payment_mode IS NULL OR o.sub_payment_mode != 'SPLIT') " +
+           "  UNION ALL " +
+           "  SELECT o.order_id, elem->>'mode' AS sub_mode, CAST(elem->>'amount' AS numeric) AS amount " +
+           "  FROM \"order\".orders o, jsonb_array_elements(o.split_payments) AS elem " +
+           "  WHERE o.restaurant_id = :restaurantId " +
+           "  AND o.status IN (:statuses) " +
+           "  AND o.created_at >= :start " +
+           "  AND o.created_at < :end " +
+           "  AND o.sub_payment_mode = 'SPLIT' " +
+           ") combined " +
+           "GROUP BY combined.sub_mode", nativeQuery = true)
     List<SubPaymentModeRevenueProjection> getRevenueBySubPaymentMode(
             @Param("restaurantId") Long restaurantId,
-            @Param("statuses") List<OrderStatus> statuses,
+            @Param("statuses") List<String> statuses,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    /** Aggregate tip revenue by tip payment mode for a restaurant within a date range and status list. */
+    @Query(value = "SELECT COALESCE(o.tip_payment_mode, 'UNSPECIFIED') AS tipPaymentMode, " +
+           "COALESCE(SUM(o.tip_amount), 0) AS amount, " +
+           "COUNT(o.order_id) AS orderCount " +
+           "FROM \"order\".orders o " +
+           "WHERE o.restaurant_id = :restaurantId " +
+           "AND o.status IN (:statuses) " +
+           "AND o.created_at >= :start " +
+           "AND o.created_at < :end " +
+           "AND o.tip_amount > 0 " +
+           "GROUP BY COALESCE(o.tip_payment_mode, 'UNSPECIFIED')", nativeQuery = true)
+    List<TipPaymentModeRevenueProjection> getRevenueByTipPaymentMode(
+            @Param("restaurantId") Long restaurantId,
+            @Param("statuses") List<String> statuses,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
 

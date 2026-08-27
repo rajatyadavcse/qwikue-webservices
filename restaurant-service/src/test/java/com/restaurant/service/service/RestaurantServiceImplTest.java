@@ -59,6 +59,7 @@ class RestaurantServiceImplTest {
 
         assertNotNull(created);
         assertEquals("test@upi", created.getUpiId());
+        assertFalse(sampleRestaurant.getTipEnabled());
         verify(restaurantRepository, times(1)).save(any(RestaurantDAO.class));
     }
 
