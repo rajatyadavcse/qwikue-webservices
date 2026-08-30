@@ -7,6 +7,7 @@ import com.kitchen.order.dto.request.OrderDiscountRequest;
 import com.kitchen.order.dto.request.OrderItemRequest;
 import com.kitchen.order.dto.request.UpdateOrderRequest;
 import com.kitchen.order.dto.request.UpdateOrderStatusRequest;
+import com.kitchen.order.dto.request.SplitPayment;
 import com.kitchen.order.dto.response.OrderItemResponse;
 import com.kitchen.order.dto.response.OrderResponse;
 import com.kitchen.order.dto.response.PagedResponse;
@@ -173,6 +174,13 @@ public class OrderServiceImpl implements IOrderService {
                 throw new IllegalArgumentException("subPaymentMode is only allowed when paymentMode is CASH");
             }
             order.setSubPaymentMode(request.getSubPaymentMode());
+        }
+        processTipDetails(restaurant, request.getTipAmount(), request.getTipPaymentMode(), order);
+        if (request.getSplitPayments() != null) {
+            order.setSplitPayments(request.getSplitPayments());
+        }
+        if (order.getSubPaymentMode() == SubPaymentMode.SPLIT) {
+            validateSplitPayments(order.getSplitPayments());
         }
         order.setPaymentStatus(PaymentStatus.PENDING);
         order.setOrderedBy(request.getOrderedBy() != null ? request.getOrderedBy() : OrderedBy.CUSTOMER);
@@ -397,11 +405,21 @@ public class OrderServiceImpl implements IOrderService {
             }
             order.setSubPaymentMode(request.getSubPaymentMode());
         }
+        RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(order.getRestaurantId());
+        processTipDetails(restaurant, request.getTipAmount(), request.getTipPaymentMode(), order);
+        if (request.getSplitPayments() != null) {
+            order.setSplitPayments(request.getSplitPayments());
+        }
+        if (order.getSubPaymentMode() == SubPaymentMode.SPLIT) {
+            validateSplitPayments(order.getSplitPayments());
+        }
 
         if (currentStatus == newStatus) {
             boolean hasFieldUpdate = request.getReason() != null
                     || request.getPrepMinutes() != null
-                    || request.getSubPaymentMode() != null;
+                    || request.getSubPaymentMode() != null
+                    || request.getTipAmount() != null
+                    || request.getSplitPayments() != null;
 
             if (hasFieldUpdate) {
                 if (newStatus == OrderStatus.PREPARING && request.getPrepMinutes() != null) {
@@ -798,6 +816,18 @@ public class OrderServiceImpl implements IOrderService {
             order.setSubPaymentMode(request.getSubPaymentMode());
         }
 
+        // Update tipAmount and tipPaymentMode if provided
+        processTipDetails(restaurant, request.getTipAmount(), request.getTipPaymentMode(), order);
+
+        // Update splitPayments if provided
+        if (request.getSplitPayments() != null) {
+            order.setSplitPayments(request.getSplitPayments());
+        }
+
+        if (order.getSubPaymentMode() == SubPaymentMode.SPLIT) {
+            validateSplitPayments(order.getSplitPayments());
+        }
+
         // 6. Update items / recalculate pricing
         boolean pricingChanged = false;
         if (request.getItems() != null) {
@@ -994,5 +1024,47 @@ public class OrderServiceImpl implements IOrderService {
     private OrderDAO findOrderById(Long orderId) {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+    }
+
+    private void validateSplitPayments(List<SplitPayment> splitPayments) {
+        if (splitPayments == null || splitPayments.isEmpty()) {
+            throw new IllegalArgumentException("splitPayments list is required when subPaymentMode is SPLIT");
+        }
+        for (SplitPayment sp : splitPayments) {
+            if (sp.getMode() == null || sp.getMode().trim().isEmpty()) {
+                throw new IllegalArgumentException("Split payment mode cannot be empty");
+            }
+            if (sp.getAmount() == null || sp.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Split payment amount must be greater than zero");
+            }
+        }
+    }
+
+    private void processTipDetails(RestaurantValidationService.RestaurantResponse restaurant,
+                                  BigDecimal requestTipAmount,
+                                  SubPaymentMode requestTipPaymentMode,
+                                  OrderDAO order) {
+        boolean isTipAmountProvided = requestTipAmount != null && requestTipAmount.compareTo(BigDecimal.ZERO) > 0;
+        boolean isTipPaymentModeProvided = requestTipPaymentMode != null;
+
+        if (isTipAmountProvided || isTipPaymentModeProvided) {
+            if (restaurant == null || Boolean.FALSE.equals(restaurant.getTipEnabled())) {
+                throw new IllegalArgumentException("Tip feature is not enabled for this restaurant");
+            }
+        }
+
+        if (requestTipAmount != null) {
+            if (requestTipAmount.compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException("tipAmount cannot be negative");
+            }
+            order.setTipAmount(requestTipAmount);
+            if (isTipAmountProvided) {
+                order.setTipPaymentMode(requestTipPaymentMode);
+            } else {
+                order.setTipPaymentMode(null);
+            }
+        } else if (isTipPaymentModeProvided) {
+            throw new IllegalArgumentException("tipPaymentMode cannot be specified when tipAmount is zero or not provided");
+        }
     }
 }

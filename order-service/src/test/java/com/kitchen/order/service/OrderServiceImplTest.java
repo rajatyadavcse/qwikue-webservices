@@ -2109,4 +2109,115 @@ public class OrderServiceImplTest {
         );
         assertEquals("An active order already exists for table/entity: 10", ex.getMessage());
     }
+
+    @Test
+    public void testUpdateOrderWithSplitPaymentsAndTipAmountSuccess() {
+        OrderDAO existingOrder = new OrderDAO();
+        existingOrder.setOrderId(200L);
+        existingOrder.setRestaurantId(1L);
+        existingOrder.setPaymentMode(PaymentMode.CASH);
+        existingOrder.setStatus(OrderStatus.PENDING);
+        existingOrder.setTotalAmount(new BigDecimal("300.00"));
+
+        when(orderRepository.findById(200L)).thenReturn(Optional.of(existingOrder));
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setPaymentModes(List.of(PaymentMode.CASH, PaymentMode.ONLINE));
+        restaurant.setTipEnabled(true);
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenAnswer(invocation -> {
+            OrderDAO dao = invocation.getArgument(0);
+            OrderResponse response = new OrderResponse();
+            response.setOrderId(dao.getOrderId());
+            response.setPaymentMode(dao.getPaymentMode());
+            response.setSubPaymentMode(dao.getSubPaymentMode());
+            response.setTipAmount(dao.getTipAmount());
+            response.setTipPaymentMode(dao.getTipPaymentMode());
+            response.setSplitPayments(dao.getSplitPayments());
+            return response;
+        });
+
+        UpdateOrderRequest request = new UpdateOrderRequest();
+        request.setSubPaymentMode(SubPaymentMode.SPLIT);
+        request.setTipAmount(new BigDecimal("50.00"));
+        request.setTipPaymentMode(SubPaymentMode.UPI);
+        request.setSplitPayments(List.of(
+                new com.kitchen.order.dto.request.SplitPayment("CASH", new BigDecimal("100.00")),
+                new com.kitchen.order.dto.request.SplitPayment("UPI", new BigDecimal("200.00"))
+        ));
+
+        OrderResponse response = orderService.updateOrder(200L, request);
+
+        assertNotNull(response);
+        assertEquals(SubPaymentMode.SPLIT, response.getSubPaymentMode());
+        assertEquals(new BigDecimal("50.00"), response.getTipAmount());
+        assertEquals(SubPaymentMode.UPI, response.getTipPaymentMode());
+        assertEquals(2, response.getSplitPayments().size());
+        assertEquals("CASH", response.getSplitPayments().get(0).getMode());
+        assertEquals(new BigDecimal("100.00"), response.getSplitPayments().get(0).getAmount());
+    }
+
+    @Test
+    public void testUpdateOrderWithTipWhenTipDisabledThrowsException() {
+        OrderDAO existingOrder = new OrderDAO();
+        existingOrder.setOrderId(205L);
+        existingOrder.setRestaurantId(1L);
+        existingOrder.setPaymentMode(PaymentMode.CASH);
+        existingOrder.setStatus(OrderStatus.PENDING);
+
+        when(orderRepository.findById(205L)).thenReturn(Optional.of(existingOrder));
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setTipEnabled(false);
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        UpdateOrderRequest request = new UpdateOrderRequest();
+        request.setTipAmount(new BigDecimal("50.00"));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> orderService.updateOrder(205L, request));
+        assertEquals("Tip feature is not enabled for this restaurant", ex.getMessage());
+    }
+
+    @Test
+    public void testUpdateOrderWithTipPaymentModeWithoutTipAmountThrowsException() {
+        OrderDAO existingOrder = new OrderDAO();
+        existingOrder.setOrderId(206L);
+        existingOrder.setRestaurantId(1L);
+        existingOrder.setPaymentMode(PaymentMode.CASH);
+        existingOrder.setStatus(OrderStatus.PENDING);
+
+        when(orderRepository.findById(206L)).thenReturn(Optional.of(existingOrder));
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setTipEnabled(true);
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        UpdateOrderRequest request = new UpdateOrderRequest();
+        request.setTipPaymentMode(SubPaymentMode.CARD);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> orderService.updateOrder(206L, request));
+        assertEquals("tipPaymentMode cannot be specified when tipAmount is zero or not provided", ex.getMessage());
+    }
+
+    @Test
+    public void testUpdateOrderWithSplitPaymentModeWithoutListThrowsException() {
+        OrderDAO existingOrder = new OrderDAO();
+        existingOrder.setOrderId(201L);
+        existingOrder.setRestaurantId(1L);
+        existingOrder.setPaymentMode(PaymentMode.CASH);
+        existingOrder.setStatus(OrderStatus.PENDING);
+
+        when(orderRepository.findById(201L)).thenReturn(Optional.of(existingOrder));
+        RestaurantValidationService.RestaurantResponse restaurant = new RestaurantValidationService.RestaurantResponse();
+        restaurant.setPaymentModes(List.of(PaymentMode.CASH));
+        when(validationService.validateRestaurant(1L)).thenReturn(restaurant);
+
+        UpdateOrderRequest request = new UpdateOrderRequest();
+        request.setSubPaymentMode(SubPaymentMode.SPLIT);
+        request.setSplitPayments(null);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> orderService.updateOrder(201L, request));
+        assertEquals("splitPayments list is required when subPaymentMode is SPLIT", ex.getMessage());
+    }
 }

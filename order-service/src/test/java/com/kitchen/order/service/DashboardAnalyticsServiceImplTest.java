@@ -42,6 +42,7 @@ class DashboardAnalyticsServiceImplTest {
         // Mock summary projection
         RevenueSummaryProjection summaryMock = mock(RevenueSummaryProjection.class);
         when(summaryMock.getTotalRevenue()).thenReturn(new BigDecimal("1000.00"));
+        when(summaryMock.getTotalTip()).thenReturn(new BigDecimal("50.00"));
         when(summaryMock.getNetSubTotal()).thenReturn(new BigDecimal("900.00"));
         when(summaryMock.getTotalTax()).thenReturn(new BigDecimal("50.00"));
         when(summaryMock.getTotalServiceCharge()).thenReturn(new BigDecimal("50.00"));
@@ -79,6 +80,15 @@ class DashboardAnalyticsServiceImplTest {
 
         when(orderRepository.getRevenueBySubPaymentMode(eq(restaurantId), anyList(), any(LocalDateTime.class), any(LocalDateTime.class)))
                 .thenReturn(List.of(upiMock, cashSubMock));
+
+        // Mock tip payment mode projections
+        TipPaymentModeRevenueProjection upiTipMock = mock(TipPaymentModeRevenueProjection.class);
+        when(upiTipMock.getTipPaymentMode()).thenReturn("UPI");
+        when(upiTipMock.getAmount()).thenReturn(new BigDecimal("50.00"));
+        when(upiTipMock.getOrderCount()).thenReturn(1L);
+
+        when(orderRepository.getRevenueByTipPaymentMode(eq(restaurantId), anyList(), any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(List.of(upiTipMock));
 
         // Mock order type projections
         OrderTypeRevenueProjection dineInMock = mock(OrderTypeRevenueProjection.class);
@@ -134,6 +144,7 @@ class DashboardAnalyticsServiceImplTest {
         // Summary assertions
         assertNotNull(response.getSummary());
         assertEquals(new BigDecimal("1000.00"), response.getSummary().getTotalRevenue());
+        assertEquals(new BigDecimal("50.00"), response.getSummary().getTotalTip());
         assertEquals(new BigDecimal("900.00"), response.getSummary().getNetSubTotal());
         assertEquals(new BigDecimal("50.00"), response.getSummary().getTotalTax());
         assertEquals(new BigDecimal("50.00"), response.getSummary().getTotalServiceCharge());
@@ -157,6 +168,12 @@ class DashboardAnalyticsServiceImplTest {
         assertEquals(2, response.getPaymentBreakdown().getBySubPaymentMode().size());
         assertEquals("UPI", response.getPaymentBreakdown().getBySubPaymentMode().get(0).getSubPaymentMode());
         assertEquals(new BigDecimal("30.00"), response.getPaymentBreakdown().getBySubPaymentMode().get(0).getPercentage());
+
+        // Tip payment mode assertions
+        assertNotNull(response.getPaymentBreakdown().getByTipPaymentMode());
+        assertEquals(1, response.getPaymentBreakdown().getByTipPaymentMode().size());
+        assertEquals("UPI", response.getPaymentBreakdown().getByTipPaymentMode().get(0).getTipPaymentMode());
+        assertEquals(new BigDecimal("50.00"), response.getPaymentBreakdown().getByTipPaymentMode().get(0).getAmount());
 
         // Order type assertions
         assertEquals(2, response.getOrderTypeBreakdown().size());

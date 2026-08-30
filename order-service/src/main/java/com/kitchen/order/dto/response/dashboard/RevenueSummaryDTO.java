@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class RevenueSummaryDTO {
     private BigDecimal totalRevenue;
+    private BigDecimal totalTip;
     private BigDecimal netSubTotal;
     private BigDecimal totalTax;
     private BigDecimal totalServiceCharge;

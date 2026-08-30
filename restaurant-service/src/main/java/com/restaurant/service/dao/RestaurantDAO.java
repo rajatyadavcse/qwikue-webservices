@@ -70,5 +70,8 @@ public class RestaurantDAO {
 
     @Column(name = "upi_id")
     private String upiId;
+
+    @Column(name = "tip_enabled", columnDefinition = "boolean default false")
+    private Boolean tipEnabled = false;
 }
 

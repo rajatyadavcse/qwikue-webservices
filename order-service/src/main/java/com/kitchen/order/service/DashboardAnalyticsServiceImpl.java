@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
@@ -66,6 +67,10 @@ public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService
                 ? statuses
                 : DEFAULT_REVENUE_STATUSES;
 
+        List<String> targetStatusNames = targetStatuses.stream()
+                .map(Enum::name)
+                .collect(Collectors.toList());
+
         // Execute the 5 database queries concurrently in parallel
         CompletableFuture<RevenueSummaryProjection> summaryFuture =
                 CompletableFuture.supplyAsync(() -> orderRepository.getRevenueSummary(restaurantId, targetStatuses, start, end));
@@ -74,26 +79,33 @@ public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService
                 CompletableFuture.supplyAsync(() -> orderRepository.getOrderStatusCounts(restaurantId, start, end));
 
         CompletableFuture<List<PaymentModeRevenueProjection>> paymentModeFuture =
-                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueByPaymentMode(restaurantId, targetStatuses, start, end));
+                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueByPaymentMode(restaurantId, targetStatusNames, start, end));
 
         CompletableFuture<List<SubPaymentModeRevenueProjection>> subPaymentModeFuture =
-                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueBySubPaymentMode(restaurantId, targetStatuses, start, end));
+                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueBySubPaymentMode(restaurantId, targetStatusNames, start, end));
 
         CompletableFuture<List<OrderTypeRevenueProjection>> orderTypeFuture =
                 CompletableFuture.supplyAsync(() -> orderRepository.getRevenueByOrderType(restaurantId, targetStatuses, start, end));
+
+        CompletableFuture<List<TipPaymentModeRevenueProjection>> tipPaymentModeFuture =
+                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueByTipPaymentMode(restaurantId, targetStatusNames, start, end));
 
         CompletableFuture.allOf(
                 summaryFuture,
                 statusCountsFuture,
                 paymentModeFuture,
                 subPaymentModeFuture,
-                orderTypeFuture
+                orderTypeFuture,
+                tipPaymentModeFuture
         ).join();
 
         // 1. Overall Summary
         RevenueSummaryProjection summaryProj = summaryFuture.join();
         BigDecimal totalRevenue = (summaryProj != null && summaryProj.getTotalRevenue() != null)
                 ? summaryProj.getTotalRevenue().setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalTip = (summaryProj != null && summaryProj.getTotalTip() != null)
+                ? summaryProj.getTotalTip().setScale(2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         BigDecimal netSubTotal = (summaryProj != null && summaryProj.getNetSubTotal() != null)
                 ? summaryProj.getNetSubTotal().setScale(2, RoundingMode.HALF_UP)
@@ -149,6 +161,7 @@ public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService
 
         RevenueSummaryDTO summaryDTO = RevenueSummaryDTO.builder()
                 .totalRevenue(totalRevenue)
+                .totalTip(totalTip)
                 .netSubTotal(netSubTotal)
                 .totalTax(totalTax)
                 .totalServiceCharge(totalServiceCharge)
@@ -195,9 +208,27 @@ public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService
             }
         }
 
+        // 5. TipPaymentMode Breakdown
+        List<TipPaymentModeRevenueProjection> tipPaymentModeProjs = tipPaymentModeFuture.join();
+        List<TipPaymentModeBreakdownDTO> tipPaymentModeList = new ArrayList<>();
+        if (tipPaymentModeProjs != null) {
+            for (TipPaymentModeRevenueProjection proj : tipPaymentModeProjs) {
+                BigDecimal amount = proj.getAmount() != null ? proj.getAmount().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+                Long count = proj.getOrderCount() != null ? proj.getOrderCount() : 0L;
+                BigDecimal percentage = calculatePercentage(amount, totalTip);
+                tipPaymentModeList.add(TipPaymentModeBreakdownDTO.builder()
+                        .tipPaymentMode(proj.getTipPaymentMode())
+                        .amount(amount)
+                        .orderCount(count)
+                        .percentage(percentage)
+                        .build());
+            }
+        }
+
         PaymentBreakdownDTO paymentBreakdown = PaymentBreakdownDTO.builder()
                 .byPaymentMode(paymentModeList)
                 .bySubPaymentMode(subPaymentModeList)
+                .byTipPaymentMode(tipPaymentModeList)
                 .build();
 
         // 5. Order Type Breakdown (DINE_IN vs TAKE_AWAY)

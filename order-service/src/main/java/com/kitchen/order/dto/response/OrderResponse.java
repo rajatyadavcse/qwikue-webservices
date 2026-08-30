@@ -8,6 +8,7 @@ import com.kitchen.order.enums.OrderedBy;
 import com.kitchen.order.enums.OrderType;
 import com.kitchen.order.enums.DiscountType;
 
+import com.kitchen.order.dto.request.SplitPayment;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -33,6 +34,9 @@ public class OrderResponse {
     private BigDecimal orderDiscountAmount;
     private String orderDiscountReason;
     private BigDecimal totalAmount;
+    private BigDecimal tipAmount;
+    private SubPaymentMode tipPaymentMode;
+    private List<SplitPayment> splitPayments;
     private List<OrderAppliedCharge> taxesAndCharges;
     private String notes;
     private String reason;

@@ -65,6 +65,7 @@ public class RestaurantValidationService implements IRestaurantValidationService
         private String razorpayKeyId;
         private String razorpayKeySecret;
         private String upiId;
+        private Boolean tipEnabled;
     }
 
     @Data
