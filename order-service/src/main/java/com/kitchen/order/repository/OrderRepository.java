@@ -27,15 +27,15 @@ import com.kitchen.order.repository.projection.TipPaymentModeRevenueProjection;
 public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
 
     /** Fetch all orders for a restaurant, paginated. */
-    @EntityGraph(attributePaths = {"customer", "items"})
+    @EntityGraph(attributePaths = {"customer"})
     Page<OrderDAO> findByRestaurantId(Long restaurantId, Pageable pageable);
 
     /** Fetch all orders for a restaurant excluding a specific status, paginated. */
-    @EntityGraph(attributePaths = {"customer", "items"})
+    @EntityGraph(attributePaths = {"customer"})
     Page<OrderDAO> findByRestaurantIdAndStatusNot(Long restaurantId, OrderStatus status, Pageable pageable);
 
     /** Fetch orders for a restaurant filtered by status, paginated. */
-    @EntityGraph(attributePaths = {"customer", "items"})
+    @EntityGraph(attributePaths = {"customer"})
     Page<OrderDAO> findByRestaurantIdAndStatus(Long restaurantId, OrderStatus status, Pageable pageable);
 
     /** Fetch active kitchen orders (non-terminal statuses) for a specific restaurant. */
@@ -48,7 +48,7 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
             PaymentMode paymentMode, PaymentStatus paymentStatus, LocalDateTime threshold);
 
     /** Fetch orders for a restaurant filtered by status and date range (inclusive start, exclusive end). */
-    @EntityGraph(attributePaths = {"customer", "items"})
+    @EntityGraph(attributePaths = {"customer"})
     @Query("SELECT o FROM OrderDAO o WHERE o.restaurantId = :restaurantId " +
            "AND o.status = :status " +
            "AND (cast(:start as java.time.LocalDateTime) IS NULL OR o.createdAt >= :start) " +
@@ -61,7 +61,7 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
             Pageable pageable);
 
     /** Fetch orders for a restaurant excluding a status, filtered by date range (inclusive start, exclusive end). */
-    @EntityGraph(attributePaths = {"customer", "items"})
+    @EntityGraph(attributePaths = {"customer"})
     @Query("SELECT o FROM OrderDAO o WHERE o.restaurantId = :restaurantId " +
            "AND o.status <> :excludeStatus " +
            "AND (cast(:start as java.time.LocalDateTime) IS NULL OR o.createdAt >= :start) " +
@@ -74,27 +74,27 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
             Pageable pageable);
 
     /** Optimized queries without dynamic null checks for precise index usage */
-    @EntityGraph(attributePaths = {"customer", "items"})
+    @EntityGraph(attributePaths = {"customer"})
     Page<OrderDAO> findByRestaurantIdAndStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
             Long restaurantId, OrderStatus status, LocalDateTime start, LocalDateTime end, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"customer", "items"})
+    @EntityGraph(attributePaths = {"customer"})
     Page<OrderDAO> findByRestaurantIdAndStatusNotAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
             Long restaurantId, OrderStatus excludeStatus, LocalDateTime start, LocalDateTime end, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"customer", "items"})
+    @EntityGraph(attributePaths = {"customer"})
     Page<OrderDAO> findByRestaurantIdAndStatusAndCreatedAtGreaterThanEqual(
             Long restaurantId, OrderStatus status, LocalDateTime start, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"customer", "items"})
+    @EntityGraph(attributePaths = {"customer"})
     Page<OrderDAO> findByRestaurantIdAndStatusNotAndCreatedAtGreaterThanEqual(
             Long restaurantId, OrderStatus excludeStatus, LocalDateTime start, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"customer", "items"})
+    @EntityGraph(attributePaths = {"customer"})
     Page<OrderDAO> findByRestaurantIdAndStatusAndCreatedAtLessThan(
             Long restaurantId, OrderStatus status, LocalDateTime end, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"customer", "items"})
+    @EntityGraph(attributePaths = {"customer"})
     Page<OrderDAO> findByRestaurantIdAndStatusNotAndCreatedAtLessThan(
             Long restaurantId, OrderStatus excludeStatus, LocalDateTime end, Pageable pageable);
 
