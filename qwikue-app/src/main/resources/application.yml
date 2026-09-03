@@ -59,3 +59,13 @@ springdoc:
     operationsSorter: method
   api-docs:
     path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+

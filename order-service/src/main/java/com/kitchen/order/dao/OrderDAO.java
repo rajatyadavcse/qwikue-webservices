@@ -158,7 +158,7 @@ public class OrderDAO {
     private CustomerDAO customer;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @BatchSize(size = 25)
+    @BatchSize(size = 50)
     private List<OrderItemDAO> items = new ArrayList<>();
 
     @PrePersist
