@@ -26,7 +26,7 @@ public class RestaurantServiceImpl implements IRestaurantService {
     RestaurantMapper mapper;
 
     @Override
-    @CacheEvict(value = "allRestaurants", allEntries = true)
+    @CacheEvict(value = "restaurantService:allRestaurants", allEntries = true)
     public Restaurant createRestaurant(Restaurant restaurant) {
         restaurant.setRestaurantId(null); // ensure Hibernate treats this as a new entity
         if (restaurant.getPaymentModes() == null || restaurant.getPaymentModes().isEmpty()) {
@@ -44,7 +44,7 @@ public class RestaurantServiceImpl implements IRestaurantService {
     }
 
     @Override
-    @Cacheable(value = "allRestaurants")
+    @Cacheable(value = "restaurantService:allRestaurants")
     public List<Restaurant> getAllRestaurants() {
         return restaurantRepository.findAll().stream()
                 .map(mapper::restaurantDAOToRestaurant)
@@ -52,7 +52,7 @@ public class RestaurantServiceImpl implements IRestaurantService {
     }
 
     @Override
-    @Cacheable(value = "restaurants", key = "#id")
+    @Cacheable(value = "restaurantService:restaurants", key = "#id")
     public Restaurant getRestaurantById(Long id) {
         RestaurantDAO restaurantDAO = restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found with id: " + id));
@@ -61,8 +61,8 @@ public class RestaurantServiceImpl implements IRestaurantService {
 
     @Override
     @Caching(evict = {
-            @CacheEvict(value = "restaurants", key = "#id"),
-            @CacheEvict(value = "allRestaurants", allEntries = true)
+            @CacheEvict(value = "restaurantService:restaurants", key = "#id"),
+            @CacheEvict(value = "restaurantService:allRestaurants", allEntries = true)
     })
     public Restaurant updateRestaurant(Long id, Restaurant restaurantDetails) {
         RestaurantDAO existingRestaurantDAO = restaurantRepository.findById(id)
@@ -100,8 +100,8 @@ public class RestaurantServiceImpl implements IRestaurantService {
 
     @Override
     @Caching(evict = {
-            @CacheEvict(value = "restaurants", key = "#id"),
-            @CacheEvict(value = "allRestaurants", allEntries = true)
+            @CacheEvict(value = "restaurantService:restaurants", key = "#id"),
+            @CacheEvict(value = "restaurantService:allRestaurants", allEntries = true)
     })
     public void deleteRestaurant(Long id) {
         RestaurantDAO existingRestaurantDAO = restaurantRepository.findById(id)
