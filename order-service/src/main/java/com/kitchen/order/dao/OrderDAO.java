@@ -21,7 +21,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "orders", schema = "\"order\"")
+@Table(name = "orders", schema = "\"order\"", indexes = {
+    @Index(name = "idx_orders_restaurant_status", columnList = "restaurant_id, status"),
+    @Index(name = "idx_orders_restaurant_entity_status", columnList = "restaurant_id, entity_no, status"),
+    @Index(name = "idx_orders_created_at", columnList = "created_at")
+})
 @Data
 public class OrderDAO {
 

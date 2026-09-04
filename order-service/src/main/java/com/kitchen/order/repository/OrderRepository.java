@@ -26,6 +26,11 @@ import com.kitchen.order.repository.projection.TipPaymentModeRevenueProjection;
 @Repository
 public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
 
+    /** Fetch single order by ID with customer and items eagerly loaded via EntityGraph. */
+    @Override
+    @EntityGraph(attributePaths = {"customer", "items"})
+    Optional<OrderDAO> findById(Long id);
+
     /** Fetch all orders for a restaurant, paginated. */
     @EntityGraph(attributePaths = {"customer"})
     Page<OrderDAO> findByRestaurantId(Long restaurantId, Pageable pageable);

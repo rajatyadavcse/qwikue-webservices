@@ -405,8 +405,10 @@ public class OrderServiceImpl implements IOrderService {
             }
             order.setSubPaymentMode(request.getSubPaymentMode());
         }
-        RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(order.getRestaurantId());
-        processTipDetails(restaurant, request.getTipAmount(), request.getTipPaymentMode(), order);
+        if (request.getTipAmount() != null || request.getTipPaymentMode() != null) {
+            RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(order.getRestaurantId());
+            processTipDetails(restaurant, request.getTipAmount(), request.getTipPaymentMode(), order);
+        }
         if (request.getSplitPayments() != null) {
             order.setSplitPayments(request.getSplitPayments());
         }
