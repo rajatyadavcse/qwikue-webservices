@@ -102,7 +102,7 @@ public class RestaurantValidationService implements IRestaurantValidationService
      *                                   errors
      */
     @Override
-    @Cacheable(value = "restaurants", key = "#restaurantId")
+    @Cacheable(value = "orderValidation:restaurants", key = "#restaurantId")
     public RestaurantResponse validateRestaurant(Long restaurantId) {
         log.debug("Validating restaurantId={}", restaurantId);
         /*
@@ -163,7 +163,7 @@ public class RestaurantValidationService implements IRestaurantValidationService
      *                                   errors
      */
     @Override
-    @Cacheable(value = "entities", key = "#entityNo + '-' + #restaurantId")
+    @Cacheable(value = "orderValidation:entities", key = "#entityNo + '-' + #restaurantId")
     public EntityResponse validateEntity(String entityNo, Long restaurantId) {
         log.debug("Validating entityNo={}, restaurantId={}", entityNo, restaurantId);
         try {
@@ -192,7 +192,7 @@ public class RestaurantValidationService implements IRestaurantValidationService
      *                                   errors
      */
     @Override
-    @Cacheable(value = "menuItems", key = "#menuId")
+    @Cacheable(value = "orderValidation:menuItems", key = "#menuId")
     public MenuResponse validateMenuAndGetPrice(Long menuId) {
         log.debug("Validating menuId={}", menuId);
         try {
@@ -225,7 +225,7 @@ public class RestaurantValidationService implements IRestaurantValidationService
      * Batch validates multiple menu items and fetches their current prices in a single call.
      */
     @Override
-    @Cacheable(value = "menuBatch", key = "#menuIds")
+    @Cacheable(value = "orderValidation:menuBatch", key = "#menuIds")
     public Map<Long, MenuResponse> validateMenusAndGetPrices(List<Long> menuIds) {
         if (menuIds == null || menuIds.isEmpty()) {
             return Map.of();

@@ -27,8 +27,8 @@ public class MenuServiceImpl implements IMenuService {
 
     @Override
     @Caching(evict = {
-            @CacheEvict(value = "menuByRestaurant", key = "#menu.restaurantId", condition = "#menu.restaurantId != null"),
-            @CacheEvict(value = "menuBatch", allEntries = true)
+            @CacheEvict(value = "restaurantService:menuByRestaurant", key = "#menu.restaurantId", condition = "#menu.restaurantId != null"),
+            @CacheEvict(value = "restaurantService:menuBatch", allEntries = true)
     })
     public Menu createMenu(Menu menu) {
         menu.setMenuId(null); // ensure Hibernate treats this as a new entity
@@ -40,7 +40,7 @@ public class MenuServiceImpl implements IMenuService {
     }
 
     @Override
-    @Cacheable(value = "menuByRestaurant", key = "#restaurantId")
+    @Cacheable(value = "restaurantService:menuByRestaurant", key = "#restaurantId")
     public List<Menu> getMenuByRestaurantId(Long restaurantId) {
         return menuRepository.findByRestaurantId(restaurantId).stream()
                 .map(mapper::menuDAOToMenu)
@@ -48,7 +48,7 @@ public class MenuServiceImpl implements IMenuService {
     }
 
     @Override
-    @Cacheable(value = "menuItems", key = "#id")
+    @Cacheable(value = "restaurantService:menuItems", key = "#id")
     public Menu getMenuById(Long id) {
         MenuDAO menuDAO = menuRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Menu not found with id: " + id));
@@ -56,7 +56,7 @@ public class MenuServiceImpl implements IMenuService {
     }
 
     @Override
-    @Cacheable(value = "menuBatch", key = "#ids")
+    @Cacheable(value = "restaurantService:menuBatch", key = "#ids")
     public List<Menu> getMenusByIds(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();
@@ -68,9 +68,9 @@ public class MenuServiceImpl implements IMenuService {
 
     @Override
     @Caching(evict = {
-            @CacheEvict(value = "menuItems", key = "#id"),
-            @CacheEvict(value = "menuByRestaurant", allEntries = true),
-            @CacheEvict(value = "menuBatch", allEntries = true)
+            @CacheEvict(value = "restaurantService:menuItems", key = "#id"),
+            @CacheEvict(value = "restaurantService:menuByRestaurant", allEntries = true),
+            @CacheEvict(value = "restaurantService:menuBatch", allEntries = true)
     })
     public Menu updateMenu(Long id, Menu menuDetails) {
         MenuDAO existingMenuDAO = menuRepository.findById(id)
@@ -89,9 +89,9 @@ public class MenuServiceImpl implements IMenuService {
 
     @Override
     @Caching(evict = {
-            @CacheEvict(value = "menuItems", key = "#id"),
-            @CacheEvict(value = "menuByRestaurant", allEntries = true),
-            @CacheEvict(value = "menuBatch", allEntries = true)
+            @CacheEvict(value = "restaurantService:menuItems", key = "#id"),
+            @CacheEvict(value = "restaurantService:menuByRestaurant", allEntries = true),
+            @CacheEvict(value = "restaurantService:menuBatch", allEntries = true)
     })
     public void deleteMenu(Long id) {
         MenuDAO existingMenuDAO = menuRepository.findById(id)
