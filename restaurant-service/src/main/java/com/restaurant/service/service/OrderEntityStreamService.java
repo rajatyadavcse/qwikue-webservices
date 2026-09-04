@@ -5,6 +5,7 @@ import com.restaurant.service.model.OrderEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -61,6 +62,7 @@ public class OrderEntityStreamService {
     /**
      * Listens to entity update events published by OrderEntityServiceImpl.
      */
+    @Async
     @EventListener
     public void handleOrderEntityUpdateEvent(OrderEntityUpdateEvent event) {
         if (event == null || event.getOrderEntity() == null) {

@@ -2,9 +2,13 @@ package com.restaurant.service;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.scheduling.annotation.EnableAsync;
 import jakarta.annotation.PostConstruct;
 import java.util.TimeZone;
 
+@EnableAsync
+@EnableCaching
 @SpringBootApplication
 public class RestaurantServiceApplication {
 

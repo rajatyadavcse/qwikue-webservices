@@ -1,6 +1,9 @@
 package com.restaurant.service.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import com.restaurant.service.dao.RestaurantDAO;
@@ -23,6 +26,7 @@ public class RestaurantServiceImpl implements IRestaurantService {
     RestaurantMapper mapper;
 
     @Override
+    @CacheEvict(value = "allRestaurants", allEntries = true)
     public Restaurant createRestaurant(Restaurant restaurant) {
         restaurant.setRestaurantId(null); // ensure Hibernate treats this as a new entity
         if (restaurant.getPaymentModes() == null || restaurant.getPaymentModes().isEmpty()) {
@@ -40,6 +44,7 @@ public class RestaurantServiceImpl implements IRestaurantService {
     }
 
     @Override
+    @Cacheable(value = "allRestaurants")
     public List<Restaurant> getAllRestaurants() {
         return restaurantRepository.findAll().stream()
                 .map(mapper::restaurantDAOToRestaurant)
@@ -47,6 +52,7 @@ public class RestaurantServiceImpl implements IRestaurantService {
     }
 
     @Override
+    @Cacheable(value = "restaurants", key = "#id")
     public Restaurant getRestaurantById(Long id) {
         RestaurantDAO restaurantDAO = restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found with id: " + id));
@@ -54,6 +60,10 @@ public class RestaurantServiceImpl implements IRestaurantService {
     }
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "restaurants", key = "#id"),
+            @CacheEvict(value = "allRestaurants", allEntries = true)
+    })
     public Restaurant updateRestaurant(Long id, Restaurant restaurantDetails) {
         RestaurantDAO existingRestaurantDAO = restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found with id: " + id));
@@ -89,6 +99,10 @@ public class RestaurantServiceImpl implements IRestaurantService {
     }
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "restaurants", key = "#id"),
+            @CacheEvict(value = "allRestaurants", allEntries = true)
+    })
     public void deleteRestaurant(Long id) {
         RestaurantDAO existingRestaurantDAO = restaurantRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found with id: " + id));

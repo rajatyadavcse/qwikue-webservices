@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -100,6 +101,8 @@ public class RestaurantValidationService implements IRestaurantValidationService
      * @throws ExternalServiceException  if restaurant-service is unreachable or
      *                                   errors
      */
+    @Override
+    @Cacheable(value = "restaurants", key = "#restaurantId")
     public RestaurantResponse validateRestaurant(Long restaurantId) {
         log.debug("Validating restaurantId={}", restaurantId);
         /*
@@ -159,24 +162,10 @@ public class RestaurantValidationService implements IRestaurantValidationService
      * @throws ExternalServiceException  if restaurant-service is unreachable or
      *                                   errors
      */
+    @Override
+    @Cacheable(value = "entities", key = "#entityNo + '-' + #restaurantId")
     public EntityResponse validateEntity(String entityNo, Long restaurantId) {
         log.debug("Validating entityNo={}, restaurantId={}", entityNo, restaurantId);
-        /*
-        try {
-            return restaurantServiceClient.get()
-                    .uri("/entities/{entityNo}/restaurant/{restaurantId}", entityNo, restaurantId)
-                    .retrieve()
-                    .body(EntityResponse.class);
-        } catch (HttpClientErrorException.NotFound e) {
-            throw new ResourceNotFoundException(
-                    String.format("Entity no %s not found for restaurantId: %d", entityNo, restaurantId));
-        } catch (RestClientException e) {
-            log.error("restaurant-service call failed for entityNo={}, restaurantId={}: {}", entityNo, restaurantId,
-                    e.getMessage());
-            throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.",
-                    e);
-        }
-        */
         try {
             com.restaurant.service.model.OrderEntity entity = orderEntityService.getOrderEntityById(entityNo, restaurantId);
             EntityResponse response = new EntityResponse();
@@ -202,33 +191,10 @@ public class RestaurantValidationService implements IRestaurantValidationService
      * @throws ExternalServiceException  if restaurant-service is unreachable or
      *                                   errors
      */
+    @Override
+    @Cacheable(value = "menuItems", key = "#menuId")
     public MenuResponse validateMenuAndGetPrice(Long menuId) {
         log.debug("Validating menuId={}", menuId);
-        /*
-        try {
-            MenuResponse menu = restaurantServiceClient.get()
-                    .uri("/menu/{id}", menuId)
-                    .retrieve()
-                    .body(MenuResponse.class);
-
-            if (menu == null) {
-                throw new ResourceNotFoundException("Menu item not found with id: " + menuId);
-            }
-            if (Boolean.FALSE.equals(menu.getIsAvailable())) {
-                throw new IllegalArgumentException(
-                        "Menu item '" + menu.getItemName() + "' (id: " + menuId + ") is currently unavailable");
-            }
-            return menu;
-        } catch (HttpClientErrorException.NotFound e) {
-            throw new ResourceNotFoundException("Menu item not found with id: " + menuId);
-        } catch (ResourceNotFoundException | IllegalArgumentException e) {
-            throw e;
-        } catch (RestClientException e) {
-            log.error("restaurant-service call failed for menuId={}: {}", menuId, e.getMessage());
-            throw new ExternalServiceException("restaurant-service is currently unavailable. Please try again later.",
-                    e);
-        }
-        */
         try {
             com.restaurant.service.model.Menu menuEntity = menuService.getMenuById(menuId);
             if (menuEntity == null) {
@@ -258,6 +224,8 @@ public class RestaurantValidationService implements IRestaurantValidationService
     /**
      * Batch validates multiple menu items and fetches their current prices in a single call.
      */
+    @Override
+    @Cacheable(value = "menuBatch", key = "#menuIds")
     public Map<Long, MenuResponse> validateMenusAndGetPrices(List<Long> menuIds) {
         if (menuIds == null || menuIds.isEmpty()) {
             return Map.of();
