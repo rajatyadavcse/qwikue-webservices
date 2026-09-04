@@ -1,7 +1,7 @@
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres?sslmode=require&currentSchema=restaurant
+    url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0&currentSchema=restaurant
     username: postgres.iglezaprcevbzjldkutb
     password: MLshZRv51jdYvLhF
     hikari:
@@ -10,6 +10,7 @@ spring:
       connection-timeout: 30000  # 30s wait before failing
       idle-timeout: 600000       # release idle connections after 10 min
       max-lifetime: 1800000      # recycle connections after 30 min
+      keepalive-time: 30000      # keep connections alive through transaction pooler
   jpa:
     # override: show SQL in local dev for easy debugging
     show-sql: true
