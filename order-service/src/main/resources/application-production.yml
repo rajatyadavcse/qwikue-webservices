@@ -1,11 +1,11 @@
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0&currentSchema=order
+    url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0&currentSchema=order&reWriteBatchedInserts=true
     username: postgres.iglezaprcevbzjldkutb
     password: MLshZRv51jdYvLhF
     hikari:
-      maximum-pool-size: 10      # cap DB connections
+      maximum-pool-size: 20      # cap DB connections
       minimum-idle: 2            # keep 2 warm connections idle
       connection-timeout: 30000  # 30s wait before failing
       idle-timeout: 600000       # release idle connections after 10 min

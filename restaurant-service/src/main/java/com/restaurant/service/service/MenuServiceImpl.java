@@ -1,6 +1,9 @@
 package com.restaurant.service.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import com.restaurant.service.dao.MenuDAO;
@@ -23,6 +26,10 @@ public class MenuServiceImpl implements IMenuService {
     MenuMapper mapper;
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "menuByRestaurant", key = "#menu.restaurantId", condition = "#menu.restaurantId != null"),
+            @CacheEvict(value = "menuBatch", allEntries = true)
+    })
     public Menu createMenu(Menu menu) {
         menu.setMenuId(null); // ensure Hibernate treats this as a new entity
         if (menu.getCreatedDate() == null) {
@@ -33,6 +40,7 @@ public class MenuServiceImpl implements IMenuService {
     }
 
     @Override
+    @Cacheable(value = "menuByRestaurant", key = "#restaurantId")
     public List<Menu> getMenuByRestaurantId(Long restaurantId) {
         return menuRepository.findByRestaurantId(restaurantId).stream()
                 .map(mapper::menuDAOToMenu)
@@ -40,6 +48,7 @@ public class MenuServiceImpl implements IMenuService {
     }
 
     @Override
+    @Cacheable(value = "menuItems", key = "#id")
     public Menu getMenuById(Long id) {
         MenuDAO menuDAO = menuRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Menu not found with id: " + id));
@@ -47,6 +56,7 @@ public class MenuServiceImpl implements IMenuService {
     }
 
     @Override
+    @Cacheable(value = "menuBatch", key = "#ids")
     public List<Menu> getMenusByIds(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();
@@ -57,6 +67,11 @@ public class MenuServiceImpl implements IMenuService {
     }
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "menuItems", key = "#id"),
+            @CacheEvict(value = "menuByRestaurant", allEntries = true),
+            @CacheEvict(value = "menuBatch", allEntries = true)
+    })
     public Menu updateMenu(Long id, Menu menuDetails) {
         MenuDAO existingMenuDAO = menuRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Menu not found with id: " + id));
@@ -73,6 +88,11 @@ public class MenuServiceImpl implements IMenuService {
     }
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "menuItems", key = "#id"),
+            @CacheEvict(value = "menuByRestaurant", allEntries = true),
+            @CacheEvict(value = "menuBatch", allEntries = true)
+    })
     public void deleteMenu(Long id) {
         MenuDAO existingMenuDAO = menuRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Menu not found with id: " + id));

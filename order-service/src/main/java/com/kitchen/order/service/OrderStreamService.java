@@ -5,6 +5,7 @@ import com.kitchen.order.dto.response.OrderResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -35,9 +36,9 @@ public class OrderStreamService {
     public SseEmitter subscribeToOrder(Long orderId) {
         SseEmitter emitter = new SseEmitter(CUSTOMER_TIMEOUT);
 
-        emitter.onCompletion(() -> customerEmitters.remove(orderId));
-        emitter.onTimeout(() -> customerEmitters.remove(orderId));
-        emitter.onError((e) -> customerEmitters.remove(orderId));
+        emitter.onCompletion(() -> customerEmitters.remove(orderId, emitter));
+        emitter.onTimeout(() -> customerEmitters.remove(orderId, emitter));
+        emitter.onError((e) -> customerEmitters.remove(orderId, emitter));
 
         customerEmitters.put(orderId, emitter);
         
@@ -45,7 +46,7 @@ public class OrderStreamService {
         try {
             emitter.send(SseEmitter.event().name("init").data("Connected"));
         } catch (IOException e) {
-            customerEmitters.remove(orderId);
+            customerEmitters.remove(orderId, emitter);
         }
 
         return emitter;
@@ -87,6 +88,7 @@ public class OrderStreamService {
     /**
      * Listens to order update events published by OrderServiceImpl.
      */
+    @Async
     @EventListener
     public void handleOrderUpdateEvent(OrderUpdateEvent event) {
         OrderResponse order = event.getOrder();
@@ -105,7 +107,7 @@ public class OrderStreamService {
                         .data(order));
             } catch (IOException e) {
                 log.warn("Failed sending update to customer emitter for order {}: {}", order.getOrderId(), e.getMessage());
-                customerEmitters.remove(order.getOrderId());
+                customerEmitters.remove(order.getOrderId(), customerEmitter);
             }
         }
 
