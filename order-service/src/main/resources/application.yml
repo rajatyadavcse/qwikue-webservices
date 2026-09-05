@@ -3,7 +3,7 @@ spring:
     time-zone: Asia/Kolkata
   # Default to 'production' profile — no need to set anything on the deployment platform
   profiles:
-    active: production
+    default: production
   jpa:
     open-in-view: false          # release Hibernate session after transaction, not after HTTP response
     hibernate:
