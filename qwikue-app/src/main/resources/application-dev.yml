@@ -3,7 +3,7 @@ spring:
     lazy-initialization: true
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0&reWriteBatchedInserts=true
+    url: jdbc:postgresql://aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0&currentSchema=identity,restaurant,order,public&reWriteBatchedInserts=true
     username: postgres.ytijkthibcvaspzrbyiz
     password: fC0rmTZPuqkJFWlh
     hikari:
@@ -15,7 +15,7 @@ spring:
       keepalive-time: 30000
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
 
 server:
   tomcat:
