@@ -85,14 +85,19 @@ public class OrderEntityStreamService {
                     emitter.send(SseEmitter.event()
                             .name("entity-update")
                             .data(entity));
-                } catch (IOException e) {
-                    log.warn("Failed sending update to restaurant entity emitter {}: {}", entity.getRestaurantId(), e.getMessage());
+                } catch (Exception e) {
+                    log.debug("Restaurant entity SSE emitter disconnected for restaurantId={}: {}", entity.getRestaurantId(), e.getMessage());
                     deadEmitters.add(emitter);
+                    try {
+                        emitter.completeWithError(e);
+                    } catch (Exception ignored) {}
                 }
             }
-            list.removeAll(deadEmitters);
-            if (list.isEmpty()) {
-                restaurantEmitters.remove(entity.getRestaurantId());
+            if (!deadEmitters.isEmpty()) {
+                list.removeAll(deadEmitters);
+                if (list.isEmpty()) {
+                    restaurantEmitters.remove(entity.getRestaurantId());
+                }
             }
         }
     }
