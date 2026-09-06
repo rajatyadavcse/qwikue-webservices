@@ -89,7 +89,7 @@ public class OrderEntityStreamService {
                     log.debug("Restaurant entity SSE emitter disconnected for restaurantId={}: {}", entity.getRestaurantId(), e.getMessage());
                     deadEmitters.add(emitter);
                     try {
-                        emitter.completeWithError(e);
+                        emitter.complete();
                     } catch (Exception ignored) {}
                 }
             }

@@ -109,7 +109,7 @@ public class OrderStreamService {
                 log.debug("Customer SSE emitter disconnected for orderId={}: {}", order.getOrderId(), e.getMessage());
                 customerEmitters.remove(order.getOrderId(), customerEmitter);
                 try {
-                    customerEmitter.completeWithError(e);
+                    customerEmitter.complete();
                 } catch (Exception ignored) {}
             }
         }
@@ -127,7 +127,7 @@ public class OrderStreamService {
                     log.debug("Restaurant SSE emitter disconnected for restaurantId={}: {}", order.getRestaurantId(), e.getMessage());
                     deadEmitters.add(emitter);
                     try {
-                        emitter.completeWithError(e);
+                        emitter.complete();
                     } catch (Exception ignored) {}
                 }
             }
