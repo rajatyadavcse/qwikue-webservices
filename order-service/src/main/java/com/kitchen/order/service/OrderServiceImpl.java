@@ -115,7 +115,8 @@ public class OrderServiceImpl implements IOrderService {
             String entityNo = request.getEntityNo().trim();
             entity = validationService.validateEntity(entityNo, request.getRestaurantId());
 
-            if (orderRepository.existsByRestaurantIdAndEntityNoAndStatusIn(request.getRestaurantId(), entityNo, ACTIVE_ORDER_STATUSES)) {
+            if (orderRepository.existsByRestaurantIdAndEntityNoAndStatusIn(request.getRestaurantId(), entityNo,
+                    ACTIVE_ORDER_STATUSES)) {
                 throw new IllegalStateException("An active order already exists for table/entity: " + entityNo);
             }
         }
@@ -201,9 +202,10 @@ public class OrderServiceImpl implements IOrderService {
                 .validateMenusAndGetPrices(menuIds);
 
         for (OrderItemRequest itemRequest : request.getItems()) {
-            RestaurantValidationService.MenuResponse menu = (menuMap != null && menuMap.containsKey(itemRequest.getMenuId()))
-                    ? menuMap.get(itemRequest.getMenuId())
-                    : validationService.validateMenuAndGetPrice(itemRequest.getMenuId());
+            RestaurantValidationService.MenuResponse menu = (menuMap != null
+                    && menuMap.containsKey(itemRequest.getMenuId()))
+                            ? menuMap.get(itemRequest.getMenuId())
+                            : validationService.validateMenuAndGetPrice(itemRequest.getMenuId());
             if (menu == null) {
                 throw new ResourceNotFoundException("Menu item not found with id: " + itemRequest.getMenuId());
             }
@@ -327,8 +329,9 @@ public class OrderServiceImpl implements IOrderService {
                     page = orderRepository.findByRestaurantIdAndStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
                             restaurantId, status, start, end, pageable);
                 } else {
-                    page = orderRepository.findByRestaurantIdAndStatusNotAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
-                            restaurantId, OrderStatus.PAYMENT_PENDING, start, end, pageable);
+                    page = orderRepository
+                            .findByRestaurantIdAndStatusNotAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                                    restaurantId, OrderStatus.PAYMENT_PENDING, start, end, pageable);
                 }
             } else if (start != null) {
                 if (status != null) {
@@ -406,7 +409,8 @@ public class OrderServiceImpl implements IOrderService {
             order.setSubPaymentMode(request.getSubPaymentMode());
         }
         if (request.getTipAmount() != null || request.getTipPaymentMode() != null) {
-            RestaurantValidationService.RestaurantResponse restaurant = validationService.validateRestaurant(order.getRestaurantId());
+            RestaurantValidationService.RestaurantResponse restaurant = validationService
+                    .validateRestaurant(order.getRestaurantId());
             processTipDetails(restaurant, request.getTipAmount(), request.getTipPaymentMode(), order);
         }
         if (request.getSplitPayments() != null) {
@@ -488,6 +492,12 @@ public class OrderServiceImpl implements IOrderService {
                     && !saved.getEntityNo().trim().isEmpty()) {
                 validationService.updateEntityStatus(saved.getEntityNo().trim(), saved.getRestaurantId(),
                         com.restaurant.service.model.OrderEntityStatus.BILL_PENDING);
+            }
+        } else if (newStatus == OrderStatus.PREPARING) {
+            if (saved.getOrderType() == OrderType.DINE_IN && saved.getEntityNo() != null
+                    && !saved.getEntityNo().trim().isEmpty()) {
+                validationService.updateEntityStatus(saved.getEntityNo().trim(), saved.getRestaurantId(),
+                        com.restaurant.service.model.OrderEntityStatus.OCCUPIED);
             }
         } else if (newStatus == OrderStatus.COMPLETED || newStatus == OrderStatus.CANCELLED
                 || newStatus == OrderStatus.REJECTED) {
@@ -753,7 +763,8 @@ public class OrderServiceImpl implements IOrderService {
                         ACTIVE_ORDER_STATUSES,
                         order.getOrderId());
                 if (hasOtherActiveOrders) {
-                    throw new IllegalStateException("An active order already exists for table/entity: " + order.getEntityNo().trim());
+                    throw new IllegalStateException(
+                            "An active order already exists for table/entity: " + order.getEntityNo().trim());
                 }
                 validationService.updateEntityStatus(order.getEntityNo().trim(), order.getRestaurantId(),
                         OrderEntityStatus.OCCUPIED);
@@ -846,9 +857,10 @@ public class OrderServiceImpl implements IOrderService {
                     .validateMenusAndGetPrices(menuIds);
 
             for (OrderItemRequest itemRequest : request.getItems()) {
-                RestaurantValidationService.MenuResponse menu = (menuMap != null && menuMap.containsKey(itemRequest.getMenuId()))
-                        ? menuMap.get(itemRequest.getMenuId())
-                        : validationService.validateMenuAndGetPrice(itemRequest.getMenuId());
+                RestaurantValidationService.MenuResponse menu = (menuMap != null
+                        && menuMap.containsKey(itemRequest.getMenuId()))
+                                ? menuMap.get(itemRequest.getMenuId())
+                                : validationService.validateMenuAndGetPrice(itemRequest.getMenuId());
                 if (menu == null) {
                     throw new ResourceNotFoundException("Menu item not found with id: " + itemRequest.getMenuId());
                 }
@@ -1043,9 +1055,9 @@ public class OrderServiceImpl implements IOrderService {
     }
 
     private void processTipDetails(RestaurantValidationService.RestaurantResponse restaurant,
-                                  BigDecimal requestTipAmount,
-                                  SubPaymentMode requestTipPaymentMode,
-                                  OrderDAO order) {
+            BigDecimal requestTipAmount,
+            SubPaymentMode requestTipPaymentMode,
+            OrderDAO order) {
         boolean isTipAmountProvided = requestTipAmount != null && requestTipAmount.compareTo(BigDecimal.ZERO) > 0;
         boolean isTipPaymentModeProvided = requestTipPaymentMode != null;
 
@@ -1066,7 +1078,8 @@ public class OrderServiceImpl implements IOrderService {
                 order.setTipPaymentMode(null);
             }
         } else if (isTipPaymentModeProvided) {
-            throw new IllegalArgumentException("tipPaymentMode cannot be specified when tipAmount is zero or not provided");
+            throw new IllegalArgumentException(
+                    "tipPaymentMode cannot be specified when tipAmount is zero or not provided");
         }
     }
 }
