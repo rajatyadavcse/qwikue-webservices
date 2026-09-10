@@ -1,5 +1,6 @@
 package com.kitchen.order.controller;
 
+import com.kitchen.order.annotation.Idempotent;
 import com.kitchen.order.dto.request.CreateOrderRequest;
 import com.kitchen.order.dto.request.OrderDiscountRequest;
 import com.kitchen.order.dto.request.UpdateOrderRequest;
@@ -55,6 +56,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Restaurant, table, or menu item not found"),
             @ApiResponse(responseCode = "503", description = "restaurant-service is unavailable")
     })
+    @Idempotent
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<OrderResponse> createOrder(@Valid @RequestBody CreateOrderRequest request) {
         return new ResponseEntity<>(orderService.createOrder(request), HttpStatus.CREATED);
@@ -103,6 +105,7 @@ public class OrderController {
             @ApiResponse(responseCode = "400", description = "Invalid request or order is in a non-modifiable state"),
             @ApiResponse(responseCode = "404", description = "Order or referenced entity/menu item not found")
     })
+    @Idempotent
     @PutMapping(value = "/{id}",
             produces = MediaType.APPLICATION_JSON_VALUE,
             consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -158,6 +161,7 @@ public class OrderController {
             @ApiResponse(responseCode = "400", description = "Null status or identical status transition without field updates"),
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
+    @Idempotent
     @PutMapping(value = "/{id}/status",
             produces = MediaType.APPLICATION_JSON_VALUE,
             consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -245,6 +249,7 @@ public class OrderController {
             @ApiResponse(responseCode = "400", description = "Invalid discount parameters or order is in non-modifiable state"),
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
+    @Idempotent
     @PutMapping(value = "/{id}/discount",
             produces = MediaType.APPLICATION_JSON_VALUE,
             consumes = MediaType.APPLICATION_JSON_VALUE)
