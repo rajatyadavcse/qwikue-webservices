@@ -1,16 +1,9 @@
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
-    # --- DEVELOPMENT DATABASE CONFIG (ACTIVE) ---
     url: jdbc:postgresql://aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0&currentSchema=restaurant
     username: postgres.ytijkthibcvaspzrbyiz
     password: fC0rmTZPuqkJFWlh
-
-    # --- PRODUCTION DATABASE CONFIG (COMMENTED OUT FOR SAFETY) ---
-    # url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0&currentSchema=restaurant
-    # username: postgres.iglezaprcevbzjldkutb
-    # password: MLshZRv51jdYvLhF
-
     hikari:
       maximum-pool-size: 10      # cap DB connections
       minimum-idle: 2            # keep 2 warm connections idle
@@ -18,16 +11,14 @@ spring:
       idle-timeout: 600000       # release idle connections after 10 min
       max-lifetime: 1800000      # recycle connections after 30 min
       keepalive-time: 30000      # keep connections alive through transaction pooler
-  jpa:
-    # override: show SQL in local dev for easy debugging
-    show-sql: true
-    hibernate:
-      ddl-auto: update           # auto-apply schema changes locally
 
-# Restrict CORS strictly to localhost origins in local dev
 cors:
-  allowed-origins: "*"
+  allowed-origins: https://kitchen-frontend-customer.vercel.app,https://kitchen-frontend-admin.vercel.app,http://localhost:3001,http://localhost:3000,http://localhost:3002,https://kitchen-frontend-admin-git-dev-avanishparashars-projects.vercel.app,https://kitchen-frontend-customer-git-dev-avanishparashars-projects.vercel.app,https://kitchen-frontend-shell-git-dev-avanishparashars-projects.vercel.app,https://kitchen-frontend-shell.vercel.app,https://qwikue.vercel.app,https://www.qwikue.in,https://qwikue-git-dev-avanishparashars-projects.vercel.app
 
 springdoc:
   swagger-ui:
     enabled: true
+
+app:
+  keep-alive:
+    cron: "0 0/10 * * * *"

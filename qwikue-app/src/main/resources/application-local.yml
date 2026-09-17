@@ -1,9 +1,16 @@
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0&reWriteBatchedInserts=true
-    username: postgres.iglezaprcevbzjldkutb
-    password: MLshZRv51jdYvLhF
+    # --- DEVELOPMENT DATABASE CONFIG (ACTIVE) ---
+    url: jdbc:postgresql://aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0&reWriteBatchedInserts=true
+    username: postgres.ytijkthibcvaspzrbyiz
+    password: fC0rmTZPuqkJFWlh
+
+    # --- PRODUCTION DATABASE CONFIG (COMMENTED OUT FOR SAFETY) ---
+    # url: jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0&reWriteBatchedInserts=true
+    # username: postgres.iglezaprcevbzjldkutb
+    # password: MLshZRv51jdYvLhF
+
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2

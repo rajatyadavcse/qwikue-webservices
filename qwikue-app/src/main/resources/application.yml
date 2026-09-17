@@ -2,7 +2,7 @@ spring:
   application:
     name: qwikue-webservices
   profiles:
-    active: production
+    default: production
   jpa:
     open-in-view: false
     database-platform: org.hibernate.dialect.PostgreSQLDialect

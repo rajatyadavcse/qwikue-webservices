@@ -54,15 +54,5 @@ EXPOSE 8080
 # - Max metaspace capped at 128m
 # - Thread stack reduced to 512k (saves ~50% per thread)
 # - TieredStopAtLevel=1 drastically reduces JIT compilation code cache memory
-ENTRYPOINT ["java", \
-  "-Duser.timezone=Asia/Kolkata", \
-  "-XX:+UseSerialGC", \
-  "-Xms128m", \
-  "-Xmx256m", \
-  "-XX:MaxMetaspaceSize=128m", \
-  "-Xss512k", \
-  "-XX:TieredStopAtLevel=1", \
-  "-Dspring.profiles.active=production", \
-  "-Dserver.port=${PORT:-8080}", \
-  "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "exec java -Duser.timezone=Asia/Kolkata -XX:+UseSerialGC -Xms128m -Xmx256m -XX:MaxMetaspaceSize=128m -Xss512k -XX:TieredStopAtLevel=1 -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:-production} -Dserver.port=${PORT:-8080} -jar app.jar"]
 

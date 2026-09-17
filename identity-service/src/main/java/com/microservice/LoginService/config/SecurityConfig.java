@@ -48,7 +48,8 @@ public class SecurityConfig {
             "/swagger-ui.html",
             "/v3/api-docs",
             "/v3/api-docs/**",
-            "/v3/api-docs.yaml"
+            "/v3/api-docs.yaml",
+            "/error"
     };
 
     /**
@@ -74,6 +75,7 @@ public class SecurityConfig {
                 .cors(withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> {
+                    auth.dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ASYNC, jakarta.servlet.DispatcherType.ERROR).permitAll();
                     auth.requestMatchers(PUBLIC_URLS).permitAll();
                     auth.requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/contact-us").permitAll();
                     if (dynamicPublicUrls != null && dynamicPublicUrls.length > 0) {

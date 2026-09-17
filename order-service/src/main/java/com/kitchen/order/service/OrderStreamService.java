@@ -105,9 +105,12 @@ public class OrderStreamService {
                 customerEmitter.send(SseEmitter.event()
                         .name("status-change")
                         .data(order));
-            } catch (IOException e) {
-                log.warn("Failed sending update to customer emitter for order {}: {}", order.getOrderId(), e.getMessage());
+            } catch (Exception e) {
+                log.debug("Customer SSE emitter disconnected for orderId={}: {}", order.getOrderId(), e.getMessage());
                 customerEmitters.remove(order.getOrderId(), customerEmitter);
+                try {
+                    customerEmitter.complete();
+                } catch (Exception ignored) {}
             }
         }
 
@@ -120,14 +123,19 @@ public class OrderStreamService {
                     emitter.send(SseEmitter.event()
                             .name("order-update")
                             .data(order));
-                } catch (IOException e) {
-                    log.warn("Failed sending update to restaurant emitter {}: {}", order.getRestaurantId(), e.getMessage());
+                } catch (Exception e) {
+                    log.debug("Restaurant SSE emitter disconnected for restaurantId={}: {}", order.getRestaurantId(), e.getMessage());
                     deadEmitters.add(emitter);
+                    try {
+                        emitter.complete();
+                    } catch (Exception ignored) {}
                 }
             }
-            list.removeAll(deadEmitters);
-            if (list.isEmpty()) {
-                restaurantEmitters.remove(order.getRestaurantId());
+            if (!deadEmitters.isEmpty()) {
+                list.removeAll(deadEmitters);
+                if (list.isEmpty()) {
+                    restaurantEmitters.remove(order.getRestaurantId());
+                }
             }
         }
     }
