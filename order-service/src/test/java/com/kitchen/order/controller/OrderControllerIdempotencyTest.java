@@ -83,4 +83,52 @@ class OrderControllerIdempotencyTest {
         // Service invocation count remains 1!
         verify(orderService, times(1)).updateOrder(eq(orderId), any(UpdateOrderRequest.class));
     }
+
+    @Test
+    void testDifferentEndpointWithSameIdempotencyKeyDoesNotHitCache() throws Exception {
+        Long orderId1 = 3026L;
+        Long orderId2 = 3027L;
+        String idempotencyKey = "shared-uuid-12345";
+
+        UpdateOrderRequest request1 = new UpdateOrderRequest();
+        request1.setOrderType(OrderType.DINE_IN);
+        request1.setNotes("Extra spicy");
+
+        OrderResponse mockResponse1 = new OrderResponse();
+        mockResponse1.setOrderId(orderId1);
+        mockResponse1.setNotes("Extra spicy");
+
+        UpdateOrderRequest request2 = new UpdateOrderRequest();
+        request2.setOrderType(OrderType.DINE_IN);
+        request2.setNotes("No onions");
+
+        OrderResponse mockResponse2 = new OrderResponse();
+        mockResponse2.setOrderId(orderId2);
+        mockResponse2.setNotes("No onions");
+
+        when(orderService.updateOrder(eq(orderId1), any(UpdateOrderRequest.class)))
+                .thenReturn(mockResponse1);
+        when(orderService.updateOrder(eq(orderId2), any(UpdateOrderRequest.class)))
+                .thenReturn(mockResponse2);
+
+        // Request for order 3026
+        mockMvc.perform(put("/orders/{id}", orderId1)
+                        .header("X-Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request1)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderId").value(orderId1));
+
+        // Request for order 3027 with SAME idempotency key (different URI path)
+        mockMvc.perform(put("/orders/{id}", orderId2)
+                        .header("X-Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request2)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderId").value(orderId2))
+                .andExpect(header().doesNotExist("X-Cache-Lookup"));
+
+        verify(orderService, times(1)).updateOrder(eq(orderId1), any(UpdateOrderRequest.class));
+        verify(orderService, times(1)).updateOrder(eq(orderId2), any(UpdateOrderRequest.class));
+    }
 }

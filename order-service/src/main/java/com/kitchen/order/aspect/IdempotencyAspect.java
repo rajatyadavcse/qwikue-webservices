@@ -51,16 +51,19 @@ public class IdempotencyAspect {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(Map.of("error", "Missing required HTTP header: " + headerName));
             }
+            log.warn("[IDEMPOTENCY_WARN] Endpoint {} {} invoked WITHOUT '{}' header! Idempotency key not provided, duplicate protection bypassed.",
+                    request.getMethod(), request.getRequestURI(), headerName);
             return joinPoint.proceed();
         }
 
         idempotencyKey = idempotencyKey.trim();
-        log.debug("Processing request with Idempotency Key: {}", idempotencyKey);
+        String cacheKey = request.getMethod() + ":" + request.getRequestURI() + ":" + idempotencyKey;
+        log.debug("Processing request with Idempotency Key: {} (cacheKey: {})", idempotencyKey, cacheKey);
 
         // 1. Check if response is already cached
-        IdempotencyRecord cachedRecord = idempotencyService.get(idempotencyKey);
+        IdempotencyRecord cachedRecord = idempotencyService.get(cacheKey);
         if (cachedRecord != null && cachedRecord.getState() == IdempotencyRecord.State.COMPLETED) {
-            log.info("Returning cached response for Idempotency Key: {}", idempotencyKey);
+            log.info("Returning cached response for Idempotency Key: {} (cacheKey: {})", idempotencyKey, cacheKey);
             HttpHeaders headers = new HttpHeaders();
             headers.add("X-Cache-Lookup", "HIT");
             headers.add("Idempotent-Replay", "true");
@@ -80,9 +83,9 @@ public class IdempotencyAspect {
         }
 
         // 2. Try acquiring lock for in-flight processing
-        boolean acquired = idempotencyService.acquireLock(idempotencyKey);
+        boolean acquired = idempotencyService.acquireLock(cacheKey);
         if (!acquired) {
-            log.warn("Concurrent request detected for Idempotency Key: {}", idempotencyKey);
+            log.warn("Concurrent request detected for Idempotency Key: {} (cacheKey: {})", idempotencyKey, cacheKey);
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of(
                             "error", "Conflict",
@@ -102,12 +105,12 @@ public class IdempotencyAspect {
                 body = responseEntity;
             }
 
-            idempotencyService.complete(idempotencyKey, statusCode, body);
-            log.debug("Saved completion state for Idempotency Key: {}", idempotencyKey);
+            idempotencyService.complete(cacheKey, statusCode, body);
+            log.debug("Saved completion state for Idempotency Key: {} (cacheKey: {})", idempotencyKey, cacheKey);
             return result;
         } catch (Throwable t) {
-            log.error("Request failed with Idempotency Key {}: {}", idempotencyKey, t.getMessage());
-            idempotencyService.fail(idempotencyKey);
+            log.error("Request failed with Idempotency Key {} (cacheKey: {}): {}", idempotencyKey, cacheKey, t.getMessage());
+            idempotencyService.fail(cacheKey);
             throw t;
         }
     }
