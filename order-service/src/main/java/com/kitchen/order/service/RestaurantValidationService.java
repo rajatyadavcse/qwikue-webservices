@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
@@ -269,6 +270,7 @@ public class RestaurantValidationService implements IRestaurantValidationService
     /**
      * Updates the status of an order entity (e.g. AVAILABLE, OCCUPIED, BILL_PENDING).
      */
+    @CacheEvict(value = "orderValidation:entities", key = "#entityNo + '-' + #restaurantId")
     public void updateEntityStatus(String entityNo, Long restaurantId, com.restaurant.service.model.OrderEntityStatus status) {
         log.debug("Updating entityNo={}, restaurantId={} to status={}", entityNo, restaurantId, status);
         try {

@@ -49,12 +49,15 @@ import java.util.stream.Collectors;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import com.kitchen.order.util.OrderAuditLogger;
 
 @Service
 @Transactional
 public class OrderServiceImpl implements IOrderService {
 
     private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
+    private final ConcurrentHashMap<Long, Long> lastUpdateTimestampMap = new ConcurrentHashMap<>();
 
     private static final List<OrderStatus> KITCHEN_ACTIVE_STATUSES = List.of(
             OrderStatus.PENDING,
@@ -392,7 +395,14 @@ public class OrderServiceImpl implements IOrderService {
 
     @Override
     public OrderResponse updateOrderStatus(Long orderId, UpdateOrderStatusRequest request) {
-        OrderDAO order = findOrderById(orderId);
+        long now = System.currentTimeMillis();
+        Long lastUpdate = lastUpdateTimestampMap.put(orderId, now);
+        if (lastUpdate != null && (now - lastUpdate) < 1000) {
+            OrderAuditLogger.logRapidUpdateWarning(orderId, now - lastUpdate, Thread.currentThread().getName(),
+                    "DIRECT_STATUS_UPDATE_API", org.slf4j.MDC.get("idempotencyKey"));
+        }
+
+        OrderDAO order = findOrderByIdForUpdate(orderId);
         OrderStatus currentStatus = order.getStatus();
         OrderStatus newStatus = request.getStatus();
 
@@ -505,6 +515,9 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         log.info("Order {} status updated to {}", orderId, newStatus);
+        OrderAuditLogger.logStatusTransition(orderId, saved.getRestaurantId(), currentStatus, newStatus,
+                saved.getPaymentStatus(), saved.getPaymentMode(), saved.getTotalAmount(),
+                "DIRECT_STATUS_UPDATE_API", request.getReason());
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
         eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
         return response;
@@ -518,7 +531,7 @@ public class OrderServiceImpl implements IOrderService {
             throw new IllegalArgumentException("A reason is required when cancelling an order");
         }
 
-        OrderDAO order = findOrderById(orderId);
+        OrderDAO order = findOrderByIdForUpdate(orderId);
         OrderStatus currentStatus = order.getStatus();
 
         if (!currentStatus.canTransitionTo(OrderStatus.CANCELLED)) {
@@ -532,6 +545,9 @@ public class OrderServiceImpl implements IOrderService {
         releaseEntityIfNoActiveOrders(saved);
 
         log.info("Order {} cancelled. Reason: {}", orderId, reason);
+        OrderAuditLogger.logStatusTransition(orderId, saved.getRestaurantId(), currentStatus, OrderStatus.CANCELLED,
+                saved.getPaymentStatus(), saved.getPaymentMode(), saved.getTotalAmount(),
+                "DIRECT_CANCEL_API", reason);
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
         eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
         return response;
@@ -540,7 +556,8 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     public OrderResponse completePayment(Long orderId, String razorpayPaymentId) {
         log.info("Completing payment for orderId={}, razorpayPaymentId={}", orderId, razorpayPaymentId);
-        OrderDAO order = findOrderById(orderId);
+        OrderDAO order = findOrderByIdForUpdate(orderId);
+        OrderStatus oldStatus = order.getStatus();
 
         order.setPaymentStatus(PaymentStatus.COMPLETED);
         order.setRazorpayPaymentId(razorpayPaymentId);
@@ -555,6 +572,9 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         OrderDAO saved = orderRepository.save(order);
+        OrderAuditLogger.logStatusTransition(orderId, saved.getRestaurantId(), oldStatus, saved.getStatus(),
+                PaymentStatus.COMPLETED, saved.getPaymentMode(), saved.getTotalAmount(),
+                "PAYMENT_COMPLETION_FLOW", "Payment completed with razorpayPaymentId=" + razorpayPaymentId);
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
         eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
         return response;
@@ -563,7 +583,8 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     public OrderResponse failPayment(Long orderId, String errorMessage) {
         log.info("Marking payment as FAILED for orderId={}, reason={}", orderId, errorMessage);
-        OrderDAO order = findOrderById(orderId);
+        OrderDAO order = findOrderByIdForUpdate(orderId);
+        OrderStatus oldStatus = order.getStatus();
 
         order.setPaymentStatus(PaymentStatus.FAILED);
         if (errorMessage != null && !errorMessage.isBlank()) {
@@ -581,6 +602,9 @@ public class OrderServiceImpl implements IOrderService {
             releaseEntityIfNoActiveOrders(saved);
         }
 
+        OrderAuditLogger.logStatusTransition(orderId, saved.getRestaurantId(), oldStatus, saved.getStatus(),
+                PaymentStatus.FAILED, saved.getPaymentMode(), saved.getTotalAmount(),
+                "PAYMENT_FAILURE_FLOW", errorMessage);
         OrderResponse response = orderMapper.orderDAOToOrderResponse(saved);
         eventPublisher.publishEvent(new OrderUpdateEvent(this, response));
         return response;
@@ -627,7 +651,7 @@ public class OrderServiceImpl implements IOrderService {
         log.info("Applying order-level discount for orderId={}: type={}, value={}, reason={}",
                 orderId, request.getType(), request.getValue(), request.getReason());
 
-        OrderDAO order = findOrderById(orderId);
+        OrderDAO order = findOrderByIdForUpdate(orderId);
 
         if (order.getStatus() == OrderStatus.CANCELLED) {
             throw new IllegalArgumentException("Cannot modify discount for an order with status: " + order.getStatus());
@@ -670,7 +694,7 @@ public class OrderServiceImpl implements IOrderService {
     public OrderResponse removeOrderDiscount(Long orderId) {
         log.info("Removing order-level discount for orderId={}", orderId);
 
-        OrderDAO order = findOrderById(orderId);
+        OrderDAO order = findOrderByIdForUpdate(orderId);
 
         if (order.getStatus() == OrderStatus.CANCELLED) {
             throw new IllegalArgumentException("Cannot modify discount for an order with status: " + order.getStatus());
@@ -712,9 +736,17 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     @Transactional
     public OrderResponse updateOrder(Long orderId, UpdateOrderRequest request) {
+        long now = System.currentTimeMillis();
+        Long lastUpdate = lastUpdateTimestampMap.put(orderId, now);
+        if (lastUpdate != null && (now - lastUpdate) < 1000) {
+            OrderAuditLogger.logRapidUpdateWarning(orderId, now - lastUpdate, Thread.currentThread().getName(),
+                    "DIRECT_ORDER_EDIT_API", org.slf4j.MDC.get("idempotencyKey"));
+        }
+
         log.info("Updating order orderId={}", orderId);
 
-        OrderDAO order = findOrderById(orderId);
+        OrderDAO order = findOrderByIdForUpdate(orderId);
+        OrderStatus oldStatus = order.getStatus();
 
         if (order.getStatus() == OrderStatus.CANCELLED) {
             throw new IllegalArgumentException("Cannot update order with status: " + order.getStatus());
@@ -724,6 +756,7 @@ public class OrderServiceImpl implements IOrderService {
                 .validateRestaurant(order.getRestaurantId());
 
         String oldEntityNo = order.getEntityNo();
+        String oldEntityType = order.getOrderEntityType();
         OrderType oldOrderType = order.getOrderType();
 
         // 1. Update orderType if specified
@@ -748,6 +781,7 @@ public class OrderServiceImpl implements IOrderService {
             }
         } else if (request.getOrderType() != null && request.getOrderType() == OrderType.TAKE_AWAY) {
             order.setOrderEntityType(null);
+            order.setEntityNo(null);
         }
 
         // Manage table status changes if entity or orderType changed
@@ -849,6 +883,7 @@ public class OrderServiceImpl implements IOrderService {
             }
 
             order.getItems().clear();
+            orderRepository.saveAndFlush(order);
             List<Long> menuIds = request.getItems().stream()
                     .map(OrderItemRequest::getMenuId)
                     .collect(Collectors.toList());
@@ -907,6 +942,17 @@ public class OrderServiceImpl implements IOrderService {
                 log.error("Failed to re-create Razorpay Order for orderId={}: {}", order.getOrderId(), e.getMessage());
                 throw new ExternalServiceException("Payment gateway integration failed: " + e.getMessage(), e);
             }
+        }
+
+        if (oldOrderType != order.getOrderType() || (oldEntityNo == null ? order.getEntityNo() != null : !oldEntityNo.equals(order.getEntityNo()))) {
+            OrderAuditLogger.logEntityChange(orderId, order.getRestaurantId(), oldEntityNo, oldEntityType,
+                    order.getEntityNo(), order.getOrderEntityType(), oldOrderType, order.getOrderType(), "DIRECT_ORDER_EDIT_API");
+        }
+
+        if (oldStatus != order.getStatus()) {
+            OrderAuditLogger.logStatusTransition(orderId, order.getRestaurantId(), oldStatus, order.getStatus(),
+                    order.getPaymentStatus(), order.getPaymentMode(), order.getTotalAmount(),
+                    "INTERNAL_PAYMENT_MODE_CHANGE", "Auto-transitioned during order update");
         }
 
         OrderDAO saved = orderRepository.save(order);
@@ -1029,6 +1075,7 @@ public class OrderServiceImpl implements IOrderService {
                     ACTIVE_ORDER_STATUSES,
                     excludeOrderId);
             if (!hasOtherActiveOrders) {
+                OrderAuditLogger.logEntityRelease(excludeOrderId, restaurantId, entityNo.trim(), null, "TABLE_RELEASE_CHECK");
                 validationService.updateEntityStatus(entityNo.trim(), restaurantId,
                         OrderEntityStatus.AVAILABLE);
             }
@@ -1037,6 +1084,12 @@ public class OrderServiceImpl implements IOrderService {
 
     private OrderDAO findOrderById(Long orderId) {
         return orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+    }
+
+    private OrderDAO findOrderByIdForUpdate(Long orderId) {
+        return orderRepository.findByIdForUpdate(orderId)
+                .or(() -> orderRepository.findById(orderId))
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
     }
 

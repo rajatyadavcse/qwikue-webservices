@@ -44,26 +44,31 @@ public class PaymentSweeperScheduler {
 
     @Scheduled(cron = "${app.payment-sweeper.cron:0 */10 * * * *}")
     public void sweepStalePayments() {
-        log.info("Running Payment Sweeper job to check for stale payments...");
+        org.slf4j.MDC.put("flowSource", "BACKEND:PaymentSweeperScheduler");
+        try {
+            log.info("[SCHEDULED_JOB] Running Payment Sweeper job to check for stale payments...");
 
-        LocalDateTime threshold = LocalDateTime.now().minusMinutes(staleMinutes);
-        List<OrderDAO> staleOrders = orderRepository.findByPaymentModeAndPaymentStatusAndCreatedAtBefore(
-                PaymentMode.ONLINE, PaymentStatus.PENDING, threshold);
+            LocalDateTime threshold = LocalDateTime.now().minusMinutes(staleMinutes);
+            List<OrderDAO> staleOrders = orderRepository.findByPaymentModeAndPaymentStatusAndCreatedAtBefore(
+                    PaymentMode.ONLINE, PaymentStatus.PENDING, threshold);
 
-        if (staleOrders.isEmpty()) {
-            log.info("No stale ONLINE PENDING payments found.");
-            return;
-        }
-
-        log.info("Found {} stale ONLINE PENDING orders for processing", staleOrders.size());
-
-        for (OrderDAO order : staleOrders) {
-            try {
-                processStaleOrder(order);
-            } catch (Exception e) {
-                log.error("Failed to process stale payment verification for orderId={}: {}", 
-                        order.getOrderId(), e.getMessage(), e);
+            if (staleOrders.isEmpty()) {
+                log.info("[SCHEDULED_JOB] No stale ONLINE PENDING payments found.");
+                return;
             }
+
+            log.info("[SCHEDULED_JOB] Found {} stale ONLINE PENDING orders for processing", staleOrders.size());
+
+            for (OrderDAO order : staleOrders) {
+                try {
+                    processStaleOrder(order);
+                } catch (Exception e) {
+                    log.error("Failed to process stale payment verification for orderId={}: {}", 
+                            order.getOrderId(), e.getMessage(), e);
+                }
+            }
+        } finally {
+            org.slf4j.MDC.remove("flowSource");
         }
     }
 
