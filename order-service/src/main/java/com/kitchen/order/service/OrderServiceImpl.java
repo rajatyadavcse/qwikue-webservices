@@ -402,7 +402,7 @@ public class OrderServiceImpl implements IOrderService {
                     "DIRECT_STATUS_UPDATE_API", org.slf4j.MDC.get("idempotencyKey"));
         }
 
-        OrderDAO order = findOrderById(orderId);
+        OrderDAO order = findOrderByIdForUpdate(orderId);
         OrderStatus currentStatus = order.getStatus();
         OrderStatus newStatus = request.getStatus();
 
@@ -531,7 +531,7 @@ public class OrderServiceImpl implements IOrderService {
             throw new IllegalArgumentException("A reason is required when cancelling an order");
         }
 
-        OrderDAO order = findOrderById(orderId);
+        OrderDAO order = findOrderByIdForUpdate(orderId);
         OrderStatus currentStatus = order.getStatus();
 
         if (!currentStatus.canTransitionTo(OrderStatus.CANCELLED)) {
@@ -556,7 +556,7 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     public OrderResponse completePayment(Long orderId, String razorpayPaymentId) {
         log.info("Completing payment for orderId={}, razorpayPaymentId={}", orderId, razorpayPaymentId);
-        OrderDAO order = findOrderById(orderId);
+        OrderDAO order = findOrderByIdForUpdate(orderId);
         OrderStatus oldStatus = order.getStatus();
 
         order.setPaymentStatus(PaymentStatus.COMPLETED);
@@ -583,7 +583,7 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     public OrderResponse failPayment(Long orderId, String errorMessage) {
         log.info("Marking payment as FAILED for orderId={}, reason={}", orderId, errorMessage);
-        OrderDAO order = findOrderById(orderId);
+        OrderDAO order = findOrderByIdForUpdate(orderId);
         OrderStatus oldStatus = order.getStatus();
 
         order.setPaymentStatus(PaymentStatus.FAILED);
@@ -651,7 +651,7 @@ public class OrderServiceImpl implements IOrderService {
         log.info("Applying order-level discount for orderId={}: type={}, value={}, reason={}",
                 orderId, request.getType(), request.getValue(), request.getReason());
 
-        OrderDAO order = findOrderById(orderId);
+        OrderDAO order = findOrderByIdForUpdate(orderId);
 
         if (order.getStatus() == OrderStatus.CANCELLED) {
             throw new IllegalArgumentException("Cannot modify discount for an order with status: " + order.getStatus());
@@ -694,7 +694,7 @@ public class OrderServiceImpl implements IOrderService {
     public OrderResponse removeOrderDiscount(Long orderId) {
         log.info("Removing order-level discount for orderId={}", orderId);
 
-        OrderDAO order = findOrderById(orderId);
+        OrderDAO order = findOrderByIdForUpdate(orderId);
 
         if (order.getStatus() == OrderStatus.CANCELLED) {
             throw new IllegalArgumentException("Cannot modify discount for an order with status: " + order.getStatus());
@@ -745,7 +745,7 @@ public class OrderServiceImpl implements IOrderService {
 
         log.info("Updating order orderId={}", orderId);
 
-        OrderDAO order = findOrderById(orderId);
+        OrderDAO order = findOrderByIdForUpdate(orderId);
         OrderStatus oldStatus = order.getStatus();
 
         if (order.getStatus() == OrderStatus.CANCELLED) {
@@ -883,6 +883,7 @@ public class OrderServiceImpl implements IOrderService {
             }
 
             order.getItems().clear();
+            orderRepository.saveAndFlush(order);
             List<Long> menuIds = request.getItems().stream()
                     .map(OrderItemRequest::getMenuId)
                     .collect(Collectors.toList());
@@ -1083,6 +1084,12 @@ public class OrderServiceImpl implements IOrderService {
 
     private OrderDAO findOrderById(Long orderId) {
         return orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+    }
+
+    private OrderDAO findOrderByIdForUpdate(Long orderId) {
+        return orderRepository.findByIdForUpdate(orderId)
+                .or(() -> orderRepository.findById(orderId))
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
     }
 

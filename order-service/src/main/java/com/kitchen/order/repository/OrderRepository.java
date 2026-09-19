@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import com.kitchen.order.repository.projection.OrderStatusCountProjection;
 import com.kitchen.order.repository.projection.OrderTypeRevenueProjection;
 import com.kitchen.order.repository.projection.PaymentModeRevenueProjection;
@@ -30,6 +32,12 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
     @Override
     @EntityGraph(attributePaths = {"customer", "items"})
     Optional<OrderDAO> findById(Long id);
+
+    /** Fetch single order by ID with pessimistic lock for concurrent update operations. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"customer", "items"})
+    @Query("SELECT o FROM OrderDAO o WHERE o.orderId = :id")
+    Optional<OrderDAO> findByIdForUpdate(@Param("id") Long id);
 
     /** Fetch all orders for a restaurant, paginated. */
     @EntityGraph(attributePaths = {"customer"})
