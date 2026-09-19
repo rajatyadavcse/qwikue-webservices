@@ -35,7 +35,6 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
 
     /** Fetch single order by ID with pessimistic lock for concurrent update operations. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = {"customer", "items"})
     @Query("SELECT o FROM OrderDAO o WHERE o.orderId = :id")
     Optional<OrderDAO> findByIdForUpdate(@Param("id") Long id);
 
