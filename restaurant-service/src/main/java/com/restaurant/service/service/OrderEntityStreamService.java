@@ -4,9 +4,10 @@ import com.restaurant.service.event.OrderEntityUpdateEvent;
 import com.restaurant.service.model.OrderEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -61,9 +62,10 @@ public class OrderEntityStreamService {
 
     /**
      * Listens to entity update events published by OrderEntityServiceImpl.
+     * Fires after transaction commit to ensure database consistency before notifying clients.
      */
     @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void handleOrderEntityUpdateEvent(OrderEntityUpdateEvent event) {
         if (event == null || event.getOrderEntity() == null) {
             return;

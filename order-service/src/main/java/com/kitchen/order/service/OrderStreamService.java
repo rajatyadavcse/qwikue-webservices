@@ -4,9 +4,10 @@ import com.kitchen.order.dto.event.OrderUpdateEvent;
 import com.kitchen.order.dto.response.OrderResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -65,7 +66,7 @@ public class OrderStreamService {
         emitter.onTimeout(() -> removeRestaurantEmitter(restaurantId, emitter));
         emitter.onError((e) -> removeRestaurantEmitter(restaurantId, emitter));
 
-        // Send initial heartbeat
+        // Send initial heartbeat to establish stream immediately
         try {
             emitter.send(SseEmitter.event().name("init").data("Connected"));
         } catch (IOException e) {
@@ -87,9 +88,10 @@ public class OrderStreamService {
 
     /**
      * Listens to order update events published by OrderServiceImpl.
+     * Fires after transaction commit to ensure database consistency before notifying clients.
      */
     @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void handleOrderUpdateEvent(OrderUpdateEvent event) {
         OrderResponse order = event.getOrder();
         if (order.getStatus() == com.kitchen.order.enums.OrderStatus.PAYMENT_PENDING) {
