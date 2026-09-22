@@ -1884,6 +1884,43 @@ public class OrderServiceImplTest {
     }
 
     @Test
+    public void testUpdateOrder_switchTable_whenOrderIsReady_setsTableToBillPending() {
+        // Arrange
+        OrderDAO existingOrder = new OrderDAO();
+        existingOrder.setOrderId(203L);
+        existingOrder.setRestaurantId(1L);
+        existingOrder.setOrderType(OrderType.DINE_IN);
+        existingOrder.setEntityNo("Table-1");
+        existingOrder.setOrderEntityType("TABLE");
+        existingOrder.setStatus(OrderStatus.READY);
+
+        when(orderRepository.findById(203L)).thenReturn(Optional.of(existingOrder));
+        when(validationService.validateRestaurant(1L)).thenReturn(new RestaurantValidationService.RestaurantResponse());
+        RestaurantValidationService.EntityResponse entityResp = new RestaurantValidationService.EntityResponse();
+        entityResp.setEntityNo("Table-2");
+        entityResp.setOrderEntityType("TABLE");
+        when(validationService.validateEntity("Table-2", 1L)).thenReturn(entityResp);
+        when(orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(eq(1L), anyString(), anyList(),
+                eq(203L))).thenReturn(false);
+        when(orderRepository.save(any(OrderDAO.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(orderMapper.orderDAOToOrderResponse(any(OrderDAO.class))).thenReturn(new OrderResponse());
+
+        // Act - switch table to Table-2 for READY order
+        UpdateOrderRequest updateReq = new UpdateOrderRequest();
+        updateReq.setEntityNo("Table-2");
+
+        orderService.updateOrder(203L, updateReq);
+
+        // Assert
+        assertEquals("Table-2", existingOrder.getEntityNo());
+        assertEquals("TABLE", existingOrder.getOrderEntityType());
+        verify(validationService, times(1)).updateEntityStatus("Table-2", 1L,
+                OrderEntityStatus.BILL_PENDING);
+        verify(validationService, times(1)).updateEntityStatus("Table-1", 1L,
+                OrderEntityStatus.AVAILABLE);
+    }
+
+    @Test
     public void testUpdateOrderOnCancelledOrderFails() {
         UpdateOrderRequest updateReq = new UpdateOrderRequest();
         updateReq.setNotes("Should fail");
