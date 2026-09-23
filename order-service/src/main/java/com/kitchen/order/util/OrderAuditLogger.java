@@ -62,4 +62,18 @@ public class OrderAuditLogger {
                 orderId, msSinceLastUpdate, flowSource, apiInfo, threadName,
                 (idempotencyKey != null ? idempotencyKey : "MISSING"));
     }
+
+    public static void logTableTransfer(Long orderId, String oldEntityNo, String newEntityNo, String updatedBy) {
+        String httpMethod = MDC.get("httpMethod");
+        String requestUri = MDC.get("requestUri");
+        String apiInfo = (httpMethod != null && requestUri != null) ? " (" + httpMethod + " " + requestUri + ")" : "";
+
+        log.warn("[ORDER_AUDIT_WARN] Table Transfer | Order {} entity update: '{}' → '{}' | Updated By: {} | ApiInfo: {}",
+                orderId,
+                (oldEntityNo != null ? oldEntityNo : "NONE"),
+                (newEntityNo != null ? newEntityNo : "NONE"),
+                (updatedBy != null ? updatedBy : "UNKNOWN"),
+                apiInfo);
+    }
 }
+

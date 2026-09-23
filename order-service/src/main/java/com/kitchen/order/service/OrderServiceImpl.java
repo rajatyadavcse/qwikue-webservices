@@ -789,6 +789,9 @@ public class OrderServiceImpl implements IOrderService {
                 || (oldEntityNo == null ? order.getEntityNo() != null : !oldEntityNo.equals(order.getEntityNo()));
 
         if (entityChanged) {
+            String updatedBy = org.slf4j.MDC.get("username") != null ? org.slf4j.MDC.get("username") : "DIRECT_ORDER_EDIT_API";
+            OrderAuditLogger.logTableTransfer(orderId, oldEntityNo, order.getEntityNo(), updatedBy);
+
             if (order.getOrderType() == OrderType.DINE_IN && order.getEntityNo() != null
                     && !order.getEntityNo().trim().isEmpty()) {
                 boolean hasOtherActiveOrders = orderRepository.existsByRestaurantIdAndEntityNoAndStatusInAndOrderIdNot(
@@ -800,8 +803,11 @@ public class OrderServiceImpl implements IOrderService {
                     throw new IllegalStateException(
                             "An active order already exists for table/entity: " + order.getEntityNo().trim());
                 }
+                OrderEntityStatus targetEntityStatus = (order.getStatus() == OrderStatus.READY)
+                        ? OrderEntityStatus.BILL_PENDING
+                        : OrderEntityStatus.OCCUPIED;
                 validationService.updateEntityStatus(order.getEntityNo().trim(), order.getRestaurantId(),
-                        OrderEntityStatus.OCCUPIED);
+                        targetEntityStatus);
             }
             if (oldOrderType == OrderType.DINE_IN && oldEntityNo != null && !oldEntityNo.trim().isEmpty()) {
                 releaseEntityIfNoActiveOrders(oldEntityNo, order.getRestaurantId(), order.getOrderId());
