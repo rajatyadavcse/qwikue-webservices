@@ -24,9 +24,14 @@ import com.kitchen.order.repository.projection.PaymentModeRevenueProjection;
 import com.kitchen.order.repository.projection.RevenueSummaryProjection;
 import com.kitchen.order.repository.projection.SubPaymentModeRevenueProjection;
 import com.kitchen.order.repository.projection.TipPaymentModeRevenueProjection;
+import com.kitchen.order.repository.projection.DailyRevenueProjection;
+import com.kitchen.order.repository.projection.MonthlyRevenueProjection;
+import com.kitchen.order.repository.projection.HourlyPeakProjection;
+import com.kitchen.order.repository.projection.OrderSourceProjection;
 
 @Repository
 public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
+
 
     /** Fetch single order by ID with customer and items eagerly loaded via EntityGraph. */
     @Override
@@ -243,6 +248,71 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
             @Param("restaurantId") Long restaurantId,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
+
+    /** Aggregate daily revenue trends for a restaurant within a date range and status list. */
+    @Query(value = "SELECT CAST(o.created_at AS DATE) AS dateStr, " +
+                   "COALESCE(SUM(o.total_amount), 0) AS revenue, " +
+                   "COUNT(o.order_id) AS orderCount " +
+                   "FROM \"order\".orders o " +
+                   "WHERE o.restaurant_id = :restaurantId " +
+                   "AND o.status IN (:statuses) " +
+                   "AND o.created_at >= :start AND o.created_at < :end " +
+                   "GROUP BY CAST(o.created_at AS DATE) " +
+                   "ORDER BY dateStr ASC", nativeQuery = true)
+    List<DailyRevenueProjection> getDailyRevenueTrends(
+            @Param("restaurantId") Long restaurantId,
+            @Param("statuses") List<String> statuses,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    /** Aggregate monthly revenue trends for a restaurant within a date range and status list. */
+    @Query(value = "SELECT CAST(EXTRACT(YEAR FROM o.created_at) AS INTEGER) AS yearVal, " +
+                   "CAST(EXTRACT(MONTH FROM o.created_at) AS INTEGER) AS monthVal, " +
+                   "COALESCE(SUM(o.total_amount), 0) AS revenue, " +
+                   "COUNT(o.order_id) AS orderCount " +
+                   "FROM \"order\".orders o " +
+                   "WHERE o.restaurant_id = :restaurantId " +
+                   "AND o.status IN (:statuses) " +
+                   "AND o.created_at >= :start AND o.created_at < :end " +
+                   "GROUP BY EXTRACT(YEAR FROM o.created_at), EXTRACT(MONTH FROM o.created_at) " +
+                   "ORDER BY yearVal ASC, monthVal ASC", nativeQuery = true)
+    List<MonthlyRevenueProjection> getMonthlyRevenueTrends(
+            @Param("restaurantId") Long restaurantId,
+            @Param("statuses") List<String> statuses,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    /** Aggregate hourly peak order distribution for a restaurant within a date range and status list. */
+    @Query(value = "SELECT CAST(EXTRACT(HOUR FROM o.created_at) AS INTEGER) AS hourOfDay, " +
+                   "COUNT(o.order_id) AS orderCount, " +
+                   "COALESCE(SUM(o.total_amount), 0) AS revenue " +
+                   "FROM \"order\".orders o " +
+                   "WHERE o.restaurant_id = :restaurantId " +
+                   "AND o.status IN (:statuses) " +
+                   "AND o.created_at >= :start AND o.created_at < :end " +
+                   "GROUP BY EXTRACT(HOUR FROM o.created_at) " +
+                   "ORDER BY hourOfDay ASC", nativeQuery = true)
+    List<HourlyPeakProjection> getHourlyPeakTrends(
+            @Param("restaurantId") Long restaurantId,
+            @Param("statuses") List<String> statuses,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    /** Aggregate revenue and order count by orderedBy channel for a restaurant within a date range and status list. */
+    @Query(value = "SELECT COALESCE(o.ordered_by, 'CUSTOMER') AS orderedBy, " +
+                   "COUNT(o.order_id) AS orderCount, " +
+                   "COALESCE(SUM(o.total_amount), 0) AS revenue " +
+                   "FROM \"order\".orders o " +
+                   "WHERE o.restaurant_id = :restaurantId " +
+                   "AND o.status IN (:statuses) " +
+                   "AND o.created_at >= :start AND o.created_at < :end " +
+                   "GROUP BY COALESCE(o.ordered_by, 'CUSTOMER')", nativeQuery = true)
+    List<OrderSourceProjection> getOrderSourceBreakdown(
+            @Param("restaurantId") Long restaurantId,
+            @Param("statuses") List<String> statuses,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
 }
+
 
 
