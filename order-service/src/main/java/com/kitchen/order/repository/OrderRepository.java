@@ -135,7 +135,7 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
            "COALESCE(SUM(o.subTotal), 0) AS netSubTotal, " +
            "COALESCE(SUM(o.taxAmount), 0) AS totalTax, " +
            "COALESCE(SUM(o.serviceChargeAmount), 0) AS totalServiceCharge, " +
-           "COALESCE(SUM(o.discountAmount + o.orderDiscountAmount), 0) AS totalDiscount, " +
+           "COALESCE(SUM(o.discountAmount), 0) AS totalDiscount, " +
            "COUNT(o.orderId) AS totalOrders, " +
            "COALESCE(AVG(o.prepMinutes), 0.0) AS averagePrepTime " +
            "FROM OrderDAO o " +
