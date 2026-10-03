@@ -42,6 +42,9 @@ class OrderControllerIdempotencyTest {
     @MockBean
     private OrderStreamService streamService;
 
+    @MockBean
+    private com.kitchen.order.service.OrderExcelExportService orderExcelExportService;
+
     @Test
     void testUpdateOrderWithSameIdempotencyKeyReturnsCachedResponse() throws Exception {
         Long orderId = 3026L;

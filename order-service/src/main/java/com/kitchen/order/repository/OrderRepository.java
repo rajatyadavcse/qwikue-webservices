@@ -115,6 +115,40 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
     Page<OrderDAO> findByRestaurantIdAndStatusNotAndCreatedAtLessThan(
             Long restaurantId, OrderStatus excludeStatus, LocalDateTime end, Pageable pageable);
 
+    // ── Export Queries (eager customer & items loading) ──────────────────────
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus status, LocalDateTime start, LocalDateTime end);
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusNotAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus excludeStatus, LocalDateTime start, LocalDateTime end);
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus status, LocalDateTime start);
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusNotAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus excludeStatus, LocalDateTime start);
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusAndCreatedAtLessThanOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus status, LocalDateTime end);
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusNotAndCreatedAtLessThanOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus excludeStatus, LocalDateTime end);
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus status);
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusNotOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus excludeStatus);
+
     /** Check if active orders exist for a given table/entity in a restaurant. */
     boolean existsByRestaurantIdAndEntityNoAndStatusIn(
             Long restaurantId, String entityNo, List<OrderStatus> statuses);
