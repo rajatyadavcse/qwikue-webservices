@@ -1,6 +1,7 @@
 package com.kitchen.order.service;
 
 import com.kitchen.order.dto.response.analytics.AdvancedAnalyticsResponse;
+import com.kitchen.order.dto.response.analytics.MenuItemSalesResponse;
 import com.kitchen.order.enums.OrderStatus;
 
 import java.time.LocalDate;
@@ -26,5 +27,22 @@ public interface IAdvancedAnalyticsService {
             LocalDate toDate,
             Integer monthsLimit,
             Integer topLimit,
+            List<OrderStatus> statuses);
+
+    /**
+     * Aggregates sales figures and daily trends for a specific menuId within a date range.
+     *
+     * @param restaurantId Restaurant ID
+     * @param menuId       Menu item ID
+     * @param fromDate     Start date (inclusive, Asia/Kolkata)
+     * @param toDate       End date (inclusive, Asia/Kolkata)
+     * @param statuses     Optional list of order statuses (defaults to COMPLETED)
+     * @return MenuItemSalesResponse
+     */
+    MenuItemSalesResponse getMenuItemSales(
+            Long restaurantId,
+            Long menuId,
+            LocalDate fromDate,
+            LocalDate toDate,
             List<OrderStatus> statuses);
 }

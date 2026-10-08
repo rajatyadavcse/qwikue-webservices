@@ -1,6 +1,7 @@
 package com.kitchen.order.controller;
 
 import com.kitchen.order.dto.response.analytics.AdvancedAnalyticsResponse;
+import com.kitchen.order.dto.response.analytics.MenuItemSalesResponse;
 import com.kitchen.order.enums.OrderStatus;
 import com.kitchen.order.service.IAdvancedAnalyticsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +14,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -59,6 +61,36 @@ public class AdvancedAnalyticsController {
 
         AdvancedAnalyticsResponse response = advancedAnalyticsService.getAdvancedAnalytics(
                 restaurantId, fromDate, toDate, monthsLimit, topLimit, statuses);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Get sales figures and daily trends for a specific menu item",
+            description = "Returns aggregated quantity sold, revenue, order count, and day-by-day sales figures for a specific menu item within a date range."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Menu item sales analytics fetched successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid restaurantId, menuId, or date range parameters")
+    })
+    @GetMapping(value = "/items/{menuId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<MenuItemSalesResponse> getMenuItemSales(
+            @Parameter(description = "Menu Item ID", required = true)
+            @PathVariable Long menuId,
+
+            @Parameter(description = "Restaurant ID", required = true)
+            @RequestParam Long restaurantId,
+
+            @Parameter(description = "Start date (inclusive, yyyy-MM-dd). Defaults to 30 days ago if omitted.")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+
+            @Parameter(description = "End date (inclusive, yyyy-MM-dd). Defaults to today if omitted.")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+
+            @Parameter(description = "Order statuses to include in calculation (defaults to COMPLETED).")
+            @RequestParam(required = false) List<OrderStatus> statuses) {
+
+        MenuItemSalesResponse response = advancedAnalyticsService.getMenuItemSales(
+                restaurantId, menuId, fromDate, toDate, statuses);
         return ResponseEntity.ok(response);
     }
 }

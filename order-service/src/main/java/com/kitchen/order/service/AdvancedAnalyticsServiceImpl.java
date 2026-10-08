@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
@@ -258,5 +259,104 @@ public class AdvancedAnalyticsServiceImpl implements IAdvancedAnalyticsService {
             }
         }
         return list;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MenuItemSalesResponse getMenuItemSales(
+            Long restaurantId,
+            Long menuId,
+            LocalDate fromDate,
+            LocalDate toDate,
+            List<OrderStatus> statuses) {
+
+        if (restaurantId == null) {
+            throw new IllegalArgumentException("restaurantId cannot be null");
+        }
+        if (menuId == null) {
+            throw new IllegalArgumentException("menuId cannot be null");
+        }
+
+        LocalDate effectiveFromDate = fromDate;
+        LocalDate effectiveToDate = toDate;
+
+        if (effectiveFromDate == null && effectiveToDate == null) {
+            effectiveToDate = LocalDate.now();
+            effectiveFromDate = effectiveToDate.minusDays(30);
+        } else if (effectiveFromDate == null) {
+            effectiveFromDate = effectiveToDate.minusDays(30);
+        } else if (effectiveToDate == null) {
+            effectiveToDate = LocalDate.now();
+        }
+
+        if (effectiveToDate.isBefore(effectiveFromDate)) {
+            throw new IllegalArgumentException("toDate (" + effectiveToDate + ") cannot be before fromDate (" + effectiveFromDate + ")");
+        }
+
+        LocalDateTime start = effectiveFromDate.atStartOfDay();
+        LocalDateTime end = effectiveToDate.plusDays(1).atStartOfDay();
+
+        List<OrderStatus> targetStatuses = (statuses != null && !statuses.isEmpty()) ? statuses : DEFAULT_REVENUE_STATUSES;
+        List<String> targetStatusNames = targetStatuses.stream().map(Enum::name).collect(Collectors.toList());
+
+        CompletableFuture<Optional<MenuItemSalesSummaryProjection>> summaryFuture =
+                CompletableFuture.supplyAsync(() -> orderItemRepository.getMenuItemSalesSummary(
+                        restaurantId, menuId, targetStatusNames, start, end), analyticsTaskExecutor);
+
+        CompletableFuture<List<MenuItemDailySalesProjection>> dailyFuture =
+                CompletableFuture.supplyAsync(() -> orderItemRepository.getMenuItemDailySales(
+                        restaurantId, menuId, targetStatusNames, start, end), analyticsTaskExecutor);
+
+        CompletableFuture.allOf(summaryFuture, dailyFuture).join();
+
+        Optional<MenuItemSalesSummaryProjection> summaryOpt = summaryFuture.join();
+        List<MenuItemDailySalesProjection> dailyProjs = dailyFuture.join();
+
+        String itemName = null;
+        Long totalQuantitySold = 0L;
+        BigDecimal totalRevenue = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        Long orderCount = 0L;
+
+        if (summaryOpt != null && summaryOpt.isPresent()) {
+            MenuItemSalesSummaryProjection summary = summaryOpt.get();
+            itemName = summary.getItemName();
+            totalQuantitySold = summary.getTotalQuantitySold() != null ? summary.getTotalQuantitySold() : 0L;
+            totalRevenue = summary.getTotalRevenue() != null ? summary.getTotalRevenue().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+            orderCount = summary.getOrderCount() != null ? summary.getOrderCount() : 0L;
+        }
+
+        BigDecimal avgPrice = (totalQuantitySold > 0 && totalRevenue.compareTo(BigDecimal.ZERO) > 0)
+                ? totalRevenue.divide(BigDecimal.valueOf(totalQuantitySold), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+
+        List<DailyItemSalesDTO> dailyTrends = new ArrayList<>();
+        if (dailyProjs != null) {
+            for (MenuItemDailySalesProjection proj : dailyProjs) {
+                LocalDate date = proj.getDateStr() != null ? LocalDate.parse(proj.getDateStr()) : null;
+                BigDecimal rev = proj.getRevenue() != null ? proj.getRevenue().setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+                Long qty = proj.getQuantitySold() != null ? proj.getQuantitySold() : 0L;
+                Long count = proj.getOrderCount() != null ? proj.getOrderCount() : 0L;
+
+                dailyTrends.add(DailyItemSalesDTO.builder()
+                        .date(date)
+                        .quantitySold(qty)
+                        .revenue(rev)
+                        .orderCount(count)
+                        .build());
+            }
+        }
+
+        return MenuItemSalesResponse.builder()
+                .menuId(menuId)
+                .restaurantId(restaurantId)
+                .itemName(itemName)
+                .fromDate(effectiveFromDate)
+                .toDate(effectiveToDate)
+                .totalQuantitySold(totalQuantitySold)
+                .totalRevenue(totalRevenue)
+                .orderCount(orderCount)
+                .averageSellingPrice(avgPrice)
+                .dailyTrends(dailyTrends)
+                .build();
     }
 }
