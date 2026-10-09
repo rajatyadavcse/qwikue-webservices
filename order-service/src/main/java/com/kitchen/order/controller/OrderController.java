@@ -27,6 +27,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.kitchen.order.service.OrderStreamService;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import com.kitchen.order.service.OrderExcelExportService;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -42,6 +45,9 @@ public class OrderController {
 
     @Autowired
     private OrderStreamService streamService;
+
+    @Autowired
+    private OrderExcelExportService orderExcelExportService;
 
     // ── POST /orders ───────────────────────────────────────────────────────────
 
@@ -147,6 +153,46 @@ public class OrderController {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         return ResponseEntity.ok(orderService.getOrdersByRestaurant(restaurantId, status, fromDate, toDate, pageable));
+    }
+
+    // ── GET /orders/export ────────────────────────────────────────────────────
+
+    @Operation(
+            summary = "Export orders to Excel (.xlsx)",
+            description = "Streams an Excel file (.xlsx) containing all orders matching the provided filters. " +
+                          "Includes an Orders summary sheet and an Order Items breakdown sheet. " +
+                          "Dates are evaluated in Asia/Kolkata timezone."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Excel file generated and streamed successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid request parameters")
+    })
+    @GetMapping(value = "/export", produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    public ResponseEntity<StreamingResponseBody> exportOrders(
+            @Parameter(description = "Restaurant ID", required = true)
+            @RequestParam Long restaurantId,
+
+            @Parameter(description = "Filter by order status (optional)")
+            @RequestParam(required = false) OrderStatus status,
+
+            @Parameter(description = "Filter from date (inclusive, yyyy-MM-dd, Asia/Kolkata)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+
+            @Parameter(description = "Filter to date (inclusive, yyyy-MM-dd, Asia/Kolkata)")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
+
+        String timestamp = LocalDate.now().toString();
+        String filename = String.format("orders_%d_%s.xlsx", restaurantId, timestamp);
+
+        StreamingResponseBody responseBody = outputStream -> {
+            orderExcelExportService.exportOrdersToExcel(restaurantId, status, fromDate, toDate, outputStream);
+        };
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, HttpHeaders.CONTENT_DISPOSITION)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(responseBody);
     }
 
     // ── PUT /orders/{id}/status ───────────────────────────────────────────────

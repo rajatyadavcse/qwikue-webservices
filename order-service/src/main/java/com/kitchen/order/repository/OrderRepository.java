@@ -24,9 +24,14 @@ import com.kitchen.order.repository.projection.PaymentModeRevenueProjection;
 import com.kitchen.order.repository.projection.RevenueSummaryProjection;
 import com.kitchen.order.repository.projection.SubPaymentModeRevenueProjection;
 import com.kitchen.order.repository.projection.TipPaymentModeRevenueProjection;
+import com.kitchen.order.repository.projection.DailyRevenueProjection;
+import com.kitchen.order.repository.projection.MonthlyRevenueProjection;
+import com.kitchen.order.repository.projection.HourlyPeakProjection;
+import com.kitchen.order.repository.projection.OrderSourceProjection;
 
 @Repository
 public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
+
 
     /** Fetch single order by ID with customer and items eagerly loaded via EntityGraph. */
     @Override
@@ -110,6 +115,40 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
     Page<OrderDAO> findByRestaurantIdAndStatusNotAndCreatedAtLessThan(
             Long restaurantId, OrderStatus excludeStatus, LocalDateTime end, Pageable pageable);
 
+    // ── Export Queries (eager customer & items loading) ──────────────────────
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus status, LocalDateTime start, LocalDateTime end);
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusNotAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus excludeStatus, LocalDateTime start, LocalDateTime end);
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus status, LocalDateTime start);
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusNotAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus excludeStatus, LocalDateTime start);
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusAndCreatedAtLessThanOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus status, LocalDateTime end);
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusNotAndCreatedAtLessThanOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus excludeStatus, LocalDateTime end);
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus status);
+
+    @EntityGraph(attributePaths = {"customer", "items"})
+    List<OrderDAO> findDistinctByRestaurantIdAndStatusNotOrderByCreatedAtDesc(
+            Long restaurantId, OrderStatus excludeStatus);
+
     /** Check if active orders exist for a given table/entity in a restaurant. */
     boolean existsByRestaurantIdAndEntityNoAndStatusIn(
             Long restaurantId, String entityNo, List<OrderStatus> statuses);
@@ -130,7 +169,7 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
            "COALESCE(SUM(o.subTotal), 0) AS netSubTotal, " +
            "COALESCE(SUM(o.taxAmount), 0) AS totalTax, " +
            "COALESCE(SUM(o.serviceChargeAmount), 0) AS totalServiceCharge, " +
-           "COALESCE(SUM(o.discountAmount + o.orderDiscountAmount), 0) AS totalDiscount, " +
+           "COALESCE(SUM(o.discountAmount), 0) AS totalDiscount, " +
            "COUNT(o.orderId) AS totalOrders, " +
            "COALESCE(AVG(o.prepMinutes), 0.0) AS averagePrepTime " +
            "FROM OrderDAO o " +
@@ -243,6 +282,71 @@ public interface OrderRepository extends JpaRepository<OrderDAO, Long> {
             @Param("restaurantId") Long restaurantId,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
+
+    /** Aggregate daily revenue trends for a restaurant within a date range and status list. */
+    @Query(value = "SELECT CAST(o.created_at AS DATE) AS dateStr, " +
+                   "COALESCE(SUM(o.total_amount), 0) AS revenue, " +
+                   "COUNT(o.order_id) AS orderCount " +
+                   "FROM \"order\".orders o " +
+                   "WHERE o.restaurant_id = :restaurantId " +
+                   "AND o.status IN (:statuses) " +
+                   "AND o.created_at >= :start AND o.created_at < :end " +
+                   "GROUP BY CAST(o.created_at AS DATE) " +
+                   "ORDER BY dateStr ASC", nativeQuery = true)
+    List<DailyRevenueProjection> getDailyRevenueTrends(
+            @Param("restaurantId") Long restaurantId,
+            @Param("statuses") List<String> statuses,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    /** Aggregate monthly revenue trends for a restaurant within a date range and status list. */
+    @Query(value = "SELECT CAST(EXTRACT(YEAR FROM o.created_at) AS INTEGER) AS yearVal, " +
+                   "CAST(EXTRACT(MONTH FROM o.created_at) AS INTEGER) AS monthVal, " +
+                   "COALESCE(SUM(o.total_amount), 0) AS revenue, " +
+                   "COUNT(o.order_id) AS orderCount " +
+                   "FROM \"order\".orders o " +
+                   "WHERE o.restaurant_id = :restaurantId " +
+                   "AND o.status IN (:statuses) " +
+                   "AND o.created_at >= :start AND o.created_at < :end " +
+                   "GROUP BY EXTRACT(YEAR FROM o.created_at), EXTRACT(MONTH FROM o.created_at) " +
+                   "ORDER BY yearVal ASC, monthVal ASC", nativeQuery = true)
+    List<MonthlyRevenueProjection> getMonthlyRevenueTrends(
+            @Param("restaurantId") Long restaurantId,
+            @Param("statuses") List<String> statuses,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    /** Aggregate hourly peak order distribution for a restaurant within a date range and status list. */
+    @Query(value = "SELECT CAST(EXTRACT(HOUR FROM o.created_at) AS INTEGER) AS hourOfDay, " +
+                   "COUNT(o.order_id) AS orderCount, " +
+                   "COALESCE(SUM(o.total_amount), 0) AS revenue " +
+                   "FROM \"order\".orders o " +
+                   "WHERE o.restaurant_id = :restaurantId " +
+                   "AND o.status IN (:statuses) " +
+                   "AND o.created_at >= :start AND o.created_at < :end " +
+                   "GROUP BY EXTRACT(HOUR FROM o.created_at) " +
+                   "ORDER BY hourOfDay ASC", nativeQuery = true)
+    List<HourlyPeakProjection> getHourlyPeakTrends(
+            @Param("restaurantId") Long restaurantId,
+            @Param("statuses") List<String> statuses,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    /** Aggregate revenue and order count by orderedBy channel for a restaurant within a date range and status list. */
+    @Query(value = "SELECT COALESCE(o.ordered_by, 'CUSTOMER') AS orderedBy, " +
+                   "COUNT(o.order_id) AS orderCount, " +
+                   "COALESCE(SUM(o.total_amount), 0) AS revenue " +
+                   "FROM \"order\".orders o " +
+                   "WHERE o.restaurant_id = :restaurantId " +
+                   "AND o.status IN (:statuses) " +
+                   "AND o.created_at >= :start AND o.created_at < :end " +
+                   "GROUP BY COALESCE(o.ordered_by, 'CUSTOMER')", nativeQuery = true)
+    List<OrderSourceProjection> getOrderSourceBreakdown(
+            @Param("restaurantId") Long restaurantId,
+            @Param("statuses") List<String> statuses,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
 }
+
 
 

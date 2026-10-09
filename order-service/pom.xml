@@ -124,6 +124,18 @@
 			<artifactId>razorpay-java</artifactId>
 			<version>1.4.7</version>
 		</dependency>
+
+		<!-- Apache POI for Excel (.xlsx) export -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi</artifactId>
+			<version>5.3.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.3.0</version>
+		</dependency>
 	</dependencies>
 
 	<build>

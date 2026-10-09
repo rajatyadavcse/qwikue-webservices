@@ -6,10 +6,10 @@ import com.kitchen.order.enums.OrderType;
 import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.repository.OrderRepository;
 import com.kitchen.order.repository.projection.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -29,8 +29,15 @@ class DashboardAnalyticsServiceImplTest {
     @Mock
     private OrderRepository orderRepository;
 
-    @InjectMocks
     private DashboardAnalyticsServiceImpl dashboardAnalyticsService;
+
+    @BeforeEach
+    void setUp() {
+        dashboardAnalyticsService = new DashboardAnalyticsServiceImpl(
+                orderRepository,
+                Runnable::run
+        );
+    }
 
     @Test
     @DisplayName("getDashboardRevenue - Successful aggregation with full breakdown")

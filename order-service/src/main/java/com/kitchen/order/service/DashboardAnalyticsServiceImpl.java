@@ -6,8 +6,8 @@ import com.kitchen.order.enums.PaymentMode;
 import com.kitchen.order.enums.OrderType;
 import com.kitchen.order.repository.OrderRepository;
 import com.kitchen.order.repository.projection.*;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,17 +19,25 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService {
 
     private final OrderRepository orderRepository;
+    private final Executor analyticsTaskExecutor;
 
     private static final List<OrderStatus> DEFAULT_REVENUE_STATUSES = List.of(
             OrderStatus.COMPLETED
     );
+
+    public DashboardAnalyticsServiceImpl(
+            OrderRepository orderRepository,
+            @Qualifier("analyticsTaskExecutor") Executor analyticsTaskExecutor) {
+        this.orderRepository = orderRepository;
+        this.analyticsTaskExecutor = analyticsTaskExecutor;
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -71,24 +79,24 @@ public class DashboardAnalyticsServiceImpl implements IDashboardAnalyticsService
                 .map(Enum::name)
                 .collect(Collectors.toList());
 
-        // Execute the 5 database queries concurrently in parallel
+        // Execute the database queries concurrently using the dedicated analyticsTaskExecutor
         CompletableFuture<RevenueSummaryProjection> summaryFuture =
-                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueSummary(restaurantId, targetStatuses, start, end));
+                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueSummary(restaurantId, targetStatuses, start, end), analyticsTaskExecutor);
 
         CompletableFuture<List<OrderStatusCountProjection>> statusCountsFuture =
-                CompletableFuture.supplyAsync(() -> orderRepository.getOrderStatusCounts(restaurantId, start, end));
+                CompletableFuture.supplyAsync(() -> orderRepository.getOrderStatusCounts(restaurantId, start, end), analyticsTaskExecutor);
 
         CompletableFuture<List<PaymentModeRevenueProjection>> paymentModeFuture =
-                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueByPaymentMode(restaurantId, targetStatusNames, start, end));
+                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueByPaymentMode(restaurantId, targetStatusNames, start, end), analyticsTaskExecutor);
 
         CompletableFuture<List<SubPaymentModeRevenueProjection>> subPaymentModeFuture =
-                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueBySubPaymentMode(restaurantId, targetStatusNames, start, end));
+                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueBySubPaymentMode(restaurantId, targetStatusNames, start, end), analyticsTaskExecutor);
 
         CompletableFuture<List<OrderTypeRevenueProjection>> orderTypeFuture =
-                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueByOrderType(restaurantId, targetStatuses, start, end));
+                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueByOrderType(restaurantId, targetStatuses, start, end), analyticsTaskExecutor);
 
         CompletableFuture<List<TipPaymentModeRevenueProjection>> tipPaymentModeFuture =
-                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueByTipPaymentMode(restaurantId, targetStatusNames, start, end));
+                CompletableFuture.supplyAsync(() -> orderRepository.getRevenueByTipPaymentMode(restaurantId, targetStatusNames, start, end), analyticsTaskExecutor);
 
         CompletableFuture.allOf(
                 summaryFuture,
